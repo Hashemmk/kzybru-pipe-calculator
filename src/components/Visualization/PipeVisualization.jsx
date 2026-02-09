@@ -33,87 +33,242 @@ export default function PipeVisualization() {
   const [activeContainer, setActiveContainer] = useState(0);
 
   // Calculate total containers needed and pipes per container
+  // Takes into account nesting optimization
   const containerInfo = useMemo(() => {
-    if (!results || !results.pipeResults || results.pipeResults.length === 0) {
+    if (!results || !results.pipeResults || results.pipeResults.length === 0 || !volume) {
       return { totalContainers: 0, pipesPerContainer: 0, totalPipes: 0 };
     }
 
-    // Find max pipesPerCrossSection and total pipes
-    let totalPipesNeeded = 0;
-    let maxPipesPerContainer = 0;
+    // Sort pipes by external diameter (largest first)
+    const sortedPipes = [...results.pipeResults]
+      .filter(p => p.numberOfPipes > 0)
+      .sort((a, b) => b.externalDiameter - a.externalDiameter);
 
-    for (const pipeResult of results.pipeResults) {
-      totalPipesNeeded += pipeResult.numberOfPipes;
-      maxPipesPerContainer = Math.max(maxPipesPerContainer, pipeResult.pipesPerCrossSection);
+    if (sortedPipes.length === 0) {
+      return { totalContainers: 0, pipesPerContainer: 0, totalPipes: 0 };
     }
 
-    // Calculate total containers needed (use the volumesNeeded from results)
-    const totalContainers = results.volumesNeeded?.total ||
-      Math.ceil(totalPipesNeeded / Math.max(1, maxPipesPerContainer));
+    // Total pipes count
+    const totalPipesNeeded = sortedPipes.reduce((sum, p) => sum + p.numberOfPipes, 0);
+
+    // Get largest pipe info
+    const largestPipe = sortedPipes[0];
+    const largePipesPerContainer = largestPipe.pipesPerCrossSection;
+    const containersForLarge = Math.ceil(largestPipe.numberOfPipes / largePipesPerContainer);
+
+    // Calculate standalone small pipes (can't nest or excess)
+    let standaloneSmallPipes = 0;
+    for (const smallPipe of sortedPipes.slice(1)) {
+      const canNest = smallPipe.externalDiameter <= largestPipe.internalDiameter;
+      if (canNest) {
+        // Excess beyond what can nest
+        const excess = Math.max(0, smallPipe.numberOfPipes - largestPipe.numberOfPipes);
+        standaloneSmallPipes += excess;
+      } else {
+        // Can't nest at all
+        standaloneSmallPipes += smallPipe.numberOfPipes;
+      }
+    }
+
+    // Calculate space for standalone pipes above large pipes
+    const usedHeight = Math.ceil(largePipesPerContainer / largestPipe.pipesPerRow) * largestPipe.externalDiameter;
+    const remainingHeight = volume.height - usedHeight;
+
+    // Calculate containers needed for standalone small pipes
+    let containersForStandalone = 0;
+    if (standaloneSmallPipes > 0 && sortedPipes.length > 1) {
+      const smallPipe = sortedPipes[1]; // Use first small pipe as reference
+      const smallPipesPerRow = Math.floor(volume.width / smallPipe.externalDiameter);
+      const smallRowsAvailable = Math.floor(remainingHeight / smallPipe.externalDiameter);
+      const standalonePerContainer = Math.max(1, smallPipesPerRow * smallRowsAvailable);
+      containersForStandalone = Math.ceil(standaloneSmallPipes / standalonePerContainer);
+    }
+
+    // Total containers = max of (containers for large, containers for standalone excess)
+    const totalContainers = Math.max(containersForLarge, containersForStandalone, 1);
 
     return {
-      totalContainers: Math.max(1, totalContainers),
-      pipesPerContainer: maxPipesPerContainer,
+      totalContainers,
+      pipesPerContainer: largePipesPerContainer,
       totalPipes: totalPipesNeeded
     };
-  }, [results]);
+  }, [results, volume]);
 
-  // Generate arrangement for the active container
+  // Generate arrangement for the active container with NESTING support
+  // Properly distributes pipes across containers, nesting where possible
   const arrangement = useMemo(() => {
     if (!results || !results.pipeResults || results.pipeResults.length === 0) {
       return null;
     }
 
+    // Sort pipes by external diameter (largest first)
+    const sortedPipes = [...results.pipeResults]
+      .filter(p => p.numberOfPipes > 0)
+      .sort((a, b) => b.externalDiameter - a.externalDiameter);
+
+    if (sortedPipes.length === 0) return null;
+
+    // Assign color indices based on sorted order
+    const colorIndices = {};
+    sortedPipes.forEach((p, idx) => {
+      colorIndices[p.id] = idx;
+    });
+
+    // Track how many of each pipe we've placed in THIS container
+    const pipeCounts = {};
+    sortedPipes.forEach(p => {
+      pipeCounts[p.id] = { count: 0, colorIndex: colorIndices[p.id] };
+    });
+
     const items = [];
-    let colorIndex = 0;
 
-    for (const pipeResult of results.pipeResults) {
-      if (pipeResult.numberOfPipes === 0) continue;
+    // Get the largest pipe type
+    const largestPipe = sortedPipes[0];
+    const outerDiameter = largestPipe.externalDiameter;
+    const outerRadius = outerDiameter / 2;
+    const largePipesPerRow = largestPipe.pipesPerRow;
+    const largePipesPerColumn = largestPipe.pipesPerColumn;
+    const largePipesPerContainer = largePipesPerRow * largePipesPerColumn;
 
-      const diameter = pipeResult.externalDiameter;
-      const radius = diameter / 2;
-      const pipesPerRow = pipeResult.pipesPerRow;
-      const pipesPerColumn = pipeResult.pipesPerColumn;
-      const pipesPerContainer = pipeResult.pipesPerCrossSection;
+    // Find smaller pipes that can nest inside the largest pipe
+    const nestingCandidates = sortedPipes.slice(1).filter(
+      p => p.externalDiameter <= largestPipe.internalDiameter
+    );
 
-      // Calculate which pipes to show for this container
-      const startPipeIndex = activeContainer * pipesPerContainer;
-      const endPipeIndex = Math.min(startPipeIndex + pipesPerContainer, pipeResult.numberOfPipes);
-      const pipesToShow = Math.max(0, endPipeIndex - startPipeIndex);
+    // Calculate how many large pipes go in this container
+    const largeStartIdx = activeContainer * largePipesPerContainer;
+    const largeEndIdx = Math.min(largeStartIdx + largePipesPerContainer, largestPipe.numberOfPipes);
+    const largePipesInThisContainer = Math.max(0, largeEndIdx - largeStartIdx);
 
-      for (let i = 0; i < pipesToShow; i++) {
-        const col = i % pipesPerRow;
-        const row = Math.floor(i / pipesPerRow);
+    // Calculate how many large pipes were placed in previous containers
+    const totalLargePipesBefore = Math.min(activeContainer * largePipesPerContainer, largestPipe.numberOfPipes);
 
-        if (row >= pipesPerColumn) break;
+    // For each nesting candidate, calculate how many should be nested in this container
+    const nestedPipesForThisContainer = {};
+    for (const candidate of nestingCandidates) {
+      // Total small pipes that can be nested = min(total small pipes, total large pipes)
+      const totalNestable = Math.min(candidate.numberOfPipes, largestPipe.numberOfPipes);
 
-        // Position from bottom-left: x increases right, y increases up from bottom
-        items.push({
-          x: radius + col * diameter,
-          y: radius + row * diameter, // This is distance from BOTTOM
-          radius: radius,
-          diameter: diameter,
-          pipeId: pipeResult.id,
-          pipeType: pipeResult,
-          color: PIPE_COLORS[colorIndex % PIPE_COLORS.length]
-        });
+      // How many were nested in previous containers
+      const nestedBefore = Math.min(totalNestable, totalLargePipesBefore);
+
+      // How many can be nested in this container
+      const nestableInThis = Math.min(totalNestable - nestedBefore, largePipesInThisContainer);
+
+      nestedPipesForThisContainer[candidate.id] = nestableInThis;
+    }
+
+    // Place large pipes in grid and nest smaller pipes inside
+    let nestedCounters = {};
+    nestingCandidates.forEach(c => { nestedCounters[c.id] = 0; });
+
+    for (let i = 0; i < largePipesInThisContainer; i++) {
+      const col = i % largePipesPerRow;
+      const row = Math.floor(i / largePipesPerRow);
+
+      const x = outerRadius + col * outerDiameter;
+      const y = outerRadius + row * outerDiameter;
+
+      // Create outer pipe item
+      const outerItem = {
+        x,
+        y,
+        radius: outerRadius,
+        diameter: outerDiameter,
+        pipeId: largestPipe.id,
+        pipeType: largestPipe,
+        color: PIPE_COLORS[colorIndices[largestPipe.id] % PIPE_COLORS.length],
+        nestedPipes: []
+      };
+
+      // Nest smaller pipes inside (one of each type that fits, if available)
+      let availableInternalDiameter = largestPipe.internalDiameter;
+
+      for (const candidate of nestingCandidates) {
+        if (nestedCounters[candidate.id] < nestedPipesForThisContainer[candidate.id] &&
+            candidate.externalDiameter <= availableInternalDiameter) {
+
+          outerItem.nestedPipes.push({
+            pipeId: candidate.id,
+            pipeType: candidate,
+            externalDiameter: candidate.externalDiameter,
+            internalDiameter: candidate.internalDiameter,
+            color: PIPE_COLORS[colorIndices[candidate.id] % PIPE_COLORS.length]
+          });
+
+          pipeCounts[candidate.id].count++;
+          nestedCounters[candidate.id]++;
+
+          // Reduce available space for further nesting (concentric)
+          availableInternalDiameter = candidate.internalDiameter;
+        }
       }
-      colorIndex++;
+
+      items.push(outerItem);
+      pipeCounts[largestPipe.id].count++;
+    }
+
+    // Calculate remaining space for standalone small pipes
+    const usedRows = Math.ceil(largePipesInThisContainer / largePipesPerRow);
+    const usedHeight = usedRows * outerDiameter;
+    const remainingHeight = volume.height - usedHeight;
+
+    // Place standalone small pipes (those that couldn't nest or excess ones)
+    for (const smallPipe of sortedPipes.slice(1)) {
+      const smallDiameter = smallPipe.externalDiameter;
+      const smallRadius = smallDiameter / 2;
+
+      // Calculate how many small pipes are allocated to standalone placement
+      // = total small pipes - total that can be nested
+      const totalNestable = Math.min(smallPipe.numberOfPipes, largestPipe.numberOfPipes);
+      const totalStandalone = smallPipe.numberOfPipes - totalNestable;
+
+      if (totalStandalone <= 0) continue;
+
+      // Calculate standalone pipes per container (based on remaining space)
+      const smallPipesPerRow = Math.floor(volume.width / smallDiameter);
+      const smallRowsAvailable = Math.floor(remainingHeight / smallDiameter);
+      const standalonePerContainer = smallPipesPerRow * smallRowsAvailable;
+
+      if (standalonePerContainer <= 0) continue;
+
+      // Which standalone pipes go in this container
+      const standaloneStartIdx = activeContainer * standalonePerContainer;
+      const standaloneEndIdx = Math.min(standaloneStartIdx + standalonePerContainer, totalStandalone);
+      const standalonePipesInThis = Math.max(0, standaloneEndIdx - standaloneStartIdx);
+
+      // Place them above the large pipes
+      for (let i = 0; i < standalonePipesInThis; i++) {
+        const col = i % smallPipesPerRow;
+        const row = Math.floor(i / smallPipesPerRow);
+        const y = usedHeight + smallRadius + row * smallDiameter;
+
+        if (y + smallRadius > volume.height) break;
+
+        items.push({
+          x: smallRadius + col * smallDiameter,
+          y: y,
+          radius: smallRadius,
+          diameter: smallDiameter,
+          pipeId: smallPipe.id,
+          pipeType: smallPipe,
+          color: PIPE_COLORS[colorIndices[smallPipe.id] % PIPE_COLORS.length],
+          nestedPipes: []
+        });
+
+        pipeCounts[smallPipe.id].count++;
+      }
     }
 
     if (items.length === 0) return null;
 
     return {
       items,
-      pipeCounts: results.pipeResults.reduce((acc, p) => {
-        const perContainer = p.pipesPerCrossSection;
-        const startIdx = activeContainer * perContainer;
-        const endIdx = Math.min(startIdx + perContainer, p.numberOfPipes);
-        acc[p.id] = { count: Math.max(0, endIdx - startIdx) };
-        return acc;
-      }, {})
+      pipeCounts: Object.fromEntries(
+        Object.entries(pipeCounts).map(([id, data]) => [id, { count: data.count }])
+      )
     };
-  }, [results, activeContainer]);
+  }, [results, activeContainer, volume]);
 
   // Calculate auto-fit scale
   const scale = useMemo(() => {
@@ -198,33 +353,78 @@ export default function PipeVisualization() {
     }
 
     // Draw pipes - FLIPPED Y axis (bottom-up)
+    // Using realistic wall thickness representation (colored rings)
     if (arrangement.items) {
       arrangement.items.forEach(item => {
         // Convert logical Y (from bottom) to canvas Y (from top)
         const canvasX = PADDING + item.x * scale;
         const canvasY = PADDING + height - item.y * scale; // FLIP Y here
-        const r = item.radius * scale;
 
-        // Draw outer pipe circle
-        ctx.beginPath();
-        ctx.arc(canvasX, canvasY, r, 0, Math.PI * 2);
-        ctx.fillStyle = item.color || '#2196f3';
-        ctx.fill();
-        ctx.strokeStyle = '#333';
-        ctx.lineWidth = Math.max(1, scale * 0.15);
-        ctx.stroke();
+        const outerR = item.radius * scale;
+        const innerR = item.pipeType?.internalDiameter
+          ? (item.pipeType.internalDiameter / 2) * scale
+          : outerR * 0.9;
+        const wallThickness = outerR - innerR;
 
-        // Draw inner circle (hollow pipe) - proportional to actual wall thickness
-        const innerRatio = item.pipeType?.internalDiameter
-          ? item.pipeType.internalDiameter / item.pipeType.externalDiameter
-          : 0.7;
+        // Draw outer pipe as a colored ring (not filled circle)
+        // First fill the entire area with white
         ctx.beginPath();
-        ctx.arc(canvasX, canvasY, r * innerRatio, 0, Math.PI * 2);
+        ctx.arc(canvasX, canvasY, outerR, 0, Math.PI * 2);
         ctx.fillStyle = '#ffffff';
         ctx.fill();
-        ctx.strokeStyle = '#999';
+
+        // Draw the pipe wall as a thick colored stroke
+        const midRadius = (outerR + innerR) / 2;
+        ctx.beginPath();
+        ctx.arc(canvasX, canvasY, midRadius, 0, Math.PI * 2);
+        ctx.strokeStyle = item.color || '#2196f3';
+        ctx.lineWidth = Math.max(2, wallThickness);
+        ctx.stroke();
+
+        // Draw outer edge
+        ctx.beginPath();
+        ctx.arc(canvasX, canvasY, outerR, 0, Math.PI * 2);
+        ctx.strokeStyle = '#333';
+        ctx.lineWidth = Math.max(1, scale * 0.1);
+        ctx.stroke();
+
+        // Draw inner edge
+        ctx.beginPath();
+        ctx.arc(canvasX, canvasY, innerR, 0, Math.PI * 2);
+        ctx.strokeStyle = '#333';
         ctx.lineWidth = Math.max(0.5, scale * 0.08);
         ctx.stroke();
+
+        // Draw nested pipes (as colored rings inside)
+        if (item.nestedPipes && item.nestedPipes.length > 0) {
+          item.nestedPipes.forEach(nestedPipe => {
+            const nestedOuterR = (nestedPipe.externalDiameter / 2) * scale;
+            const nestedInnerR = (nestedPipe.internalDiameter / 2) * scale;
+            const nestedWallThickness = nestedOuterR - nestedInnerR;
+            const nestedMidRadius = (nestedOuterR + nestedInnerR) / 2;
+
+            // Draw nested pipe wall as colored ring
+            ctx.beginPath();
+            ctx.arc(canvasX, canvasY, nestedMidRadius, 0, Math.PI * 2);
+            ctx.strokeStyle = nestedPipe.color || '#4caf50';
+            ctx.lineWidth = Math.max(2, nestedWallThickness);
+            ctx.stroke();
+
+            // Draw nested pipe outer edge
+            ctx.beginPath();
+            ctx.arc(canvasX, canvasY, nestedOuterR, 0, Math.PI * 2);
+            ctx.strokeStyle = '#555';
+            ctx.lineWidth = Math.max(0.5, scale * 0.06);
+            ctx.stroke();
+
+            // Draw nested pipe inner edge
+            ctx.beginPath();
+            ctx.arc(canvasX, canvasY, nestedInnerR, 0, Math.PI * 2);
+            ctx.strokeStyle = '#555';
+            ctx.lineWidth = Math.max(0.5, scale * 0.06);
+            ctx.stroke();
+          });
+        }
       });
     }
 
@@ -448,30 +648,44 @@ export default function PipeVisualization() {
       {results.pipeResults.length > 0 && (
         <Box mt={2}>
           <Typography variant="subtitle2" gutterBottom sx={{ fontWeight: 600, color: 'text.primary' }}>
-            Pipe Types
+            Pipe Types {arrangement.items.some(i => i.nestedPipes?.length > 0) && '(with nesting)'}
           </Typography>
           <Box display="flex" flexWrap="wrap" gap={1}>
-            {results.pipeResults.map((pipeResult, index) => {
-              const color = PIPE_COLORS[index % PIPE_COLORS.length];
-              const inContainer = arrangement.pipeCounts[pipeResult.id]?.count || 0;
+            {[...results.pipeResults]
+              .sort((a, b) => b.externalDiameter - a.externalDiameter)
+              .map((pipeResult, index) => {
+                const color = PIPE_COLORS[index % PIPE_COLORS.length];
+                const inContainer = arrangement.pipeCounts[pipeResult.id]?.count || 0;
 
-              return (
-                <Chip
-                  key={pipeResult.id}
-                  label={`Ø${pipeResult.externalDiameter}cm × ${pipeResult.standardLengthM}m (${inContainer} in view)`}
-                  sx={{
-                    backgroundColor: inContainer > 0 ? color : '#ccc',
-                    color: 'white',
-                    fontWeight: 500,
-                    opacity: inContainer > 0 ? 1 : 0.6,
-                    '& .MuiChip-label': {
-                      fontSize: '0.75rem'
-                    }
-                  }}
-                  size="small"
-                />
-              );
-            })}
+                // Check if any of this pipe type is nested in this container
+                const nestedCount = arrangement.items.reduce((count, item) => {
+                  return count + (item.nestedPipes?.filter(np => np.pipeId === pipeResult.id).length || 0);
+                }, 0);
+
+                let label = `Ø${pipeResult.externalDiameter}cm × ${pipeResult.standardLengthM}m`;
+                if (nestedCount > 0 && index > 0) {
+                  label += ` (${nestedCount} nested)`;
+                } else if (inContainer > 0) {
+                  label += ` (${inContainer})`;
+                }
+
+                return (
+                  <Chip
+                    key={pipeResult.id}
+                    label={label}
+                    sx={{
+                      backgroundColor: inContainer > 0 ? color : '#ccc',
+                      color: 'white',
+                      fontWeight: 500,
+                      opacity: inContainer > 0 ? 1 : 0.6,
+                      '& .MuiChip-label': {
+                        fontSize: '0.75rem'
+                      }
+                    }}
+                    size="small"
+                  />
+                );
+              })}
           </Box>
         </Box>
       )}

@@ -152,45 +152,47 @@ function CalculatorLayout() {
       {/* Header */}
       <Box
         sx={{
-          bgcolor: KUZEYBORU_COLORS.primary,
-          color: 'white',
-          py: 2,
+          bgcolor: '#ffffff',
+          py: 1.5,
           px: 3,
           mb: 3,
-          boxShadow: '0 2px 8px rgba(76, 92, 101, 0.15)',
+          boxShadow: '0 2px 8px rgba(76, 92, 101, 0.1)',
+          borderBottom: '1px solid',
+          borderColor: 'divider',
         }}
       >
         <Container maxWidth="xl">
           <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-              {/* Logo placeholder - replace with actual logo */}
-              <Box
+            {/* KuzeyBoru Logo - Red background with white text */}
+            <Box
+              sx={{
+                bgcolor: KUZEYBORU_COLORS.accent,
+                borderRadius: '6px',
+                px: 2,
+                py: 0.8,
+                display: 'flex',
+                alignItems: 'center',
+              }}
+            >
+              <Typography
                 sx={{
-                  width: 40,
-                  height: 40,
-                  borderRadius: '50%',
-                  bgcolor: 'white',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
+                  color: 'white',
                   fontWeight: 700,
-                  color: KUZEYBORU_COLORS.primary,
-                  fontSize: '14px',
+                  fontSize: '1.5rem',
+                  letterSpacing: '-0.5px',
+                  fontFamily: 'Montserrat, sans-serif',
+                  textTransform: 'lowercase',
                 }}
               >
-                KB
-              </Box>
-              <Typography
-                variant="h5"
-                component="h1"
-                sx={{ fontWeight: 700, letterSpacing: '-0.5px' }}
-              >
-                KUZEYBORU
+                kuzeyboru
               </Typography>
             </Box>
             <Typography
               variant="h6"
-              sx={{ fontWeight: 500, opacity: 0.9 }}
+              sx={{
+                fontWeight: 600,
+                color: KUZEYBORU_COLORS.primary,
+              }}
             >
               Pipe Calculator
             </Typography>
