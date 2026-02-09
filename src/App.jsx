@@ -1,13 +1,13 @@
 /**
  * Main App Component
  * Orchestrates all components and manages overall layout
+ * KuzeyBoru Pipe Calculator
  */
 
-import React from 'react';
-import { 
-  Container, 
-  Grid, 
-  Typography, 
+import {
+  Container,
+  Grid,
+  Typography,
   Box,
   Button,
   ThemeProvider,
@@ -23,14 +23,31 @@ import ConfigurationInput from './components/ConfigurationInput/ConfigurationInp
 import ResultsDisplay from './components/ResultsDisplay/ResultsDisplay';
 import PipeVisualization from './components/Visualization/PipeVisualization';
 
-// Create custom theme
+// KuzeyBoru brand colors
+const KUZEYBORU_COLORS = {
+  primary: '#4C5C65',      // Dark Blue-Gray
+  accent: '#F10826',       // Red/Crimson
+  background: '#F5F7F8',   // Light Gray-White
+  paper: '#FFFFFF',        // White
+  lightGray: '#E7EBED',    // Secondary background
+  text: '#4C5C65',         // Dark Gray text
+  textSecondary: '#7E7E7E' // Secondary text
+};
+
+// Create custom theme with KuzeyBoru branding
 const theme = createTheme({
   palette: {
     primary: {
-      main: '#1976d2',
+      main: KUZEYBORU_COLORS.primary,
+      light: '#6B7B84',
+      dark: '#3a474e',
+      contrastText: '#ffffff',
     },
     secondary: {
-      main: '#ff9800',
+      main: KUZEYBORU_COLORS.accent,
+      light: '#ff3d4d',
+      dark: '#c00620',
+      contrastText: '#ffffff',
     },
     success: {
       main: '#4caf50',
@@ -39,18 +56,23 @@ const theme = createTheme({
       main: '#ff9800',
     },
     error: {
-      main: '#f44336',
+      main: KUZEYBORU_COLORS.accent,
     },
     info: {
-      main: '#2196f3',
+      main: KUZEYBORU_COLORS.primary,
     },
     background: {
-      default: '#f5f5f5',
-      paper: '#ffffff',
+      default: KUZEYBORU_COLORS.background,
+      paper: KUZEYBORU_COLORS.paper,
+    },
+    text: {
+      primary: KUZEYBORU_COLORS.text,
+      secondary: KUZEYBORU_COLORS.textSecondary,
     },
   },
   typography: {
     fontFamily: [
+      'Montserrat',
       'Inter',
       '-apple-system',
       'BlinkMacSystemFont',
@@ -60,6 +82,56 @@ const theme = createTheme({
       'Arial',
       'sans-serif',
     ].join(','),
+    h4: {
+      fontWeight: 700,
+    },
+    h5: {
+      fontWeight: 600,
+    },
+    h6: {
+      fontWeight: 600,
+    },
+    subtitle1: {
+      fontWeight: 500,
+    },
+    button: {
+      fontWeight: 600,
+      textTransform: 'none',
+    },
+  },
+  shape: {
+    borderRadius: 8,
+  },
+  components: {
+    MuiPaper: {
+      styleOverrides: {
+        root: {
+          boxShadow: '0 2px 8px rgba(76, 92, 101, 0.08)',
+        },
+      },
+    },
+    MuiButton: {
+      styleOverrides: {
+        root: {
+          borderRadius: 8,
+          padding: '10px 24px',
+        },
+        containedSecondary: {
+          '&:hover': {
+            backgroundColor: '#c00620',
+          },
+        },
+      },
+    },
+    MuiTextField: {
+      styleOverrides: {
+        root: {
+          '& .MuiOutlinedInput-root': {
+            borderRadius: 8,
+          },
+        },
+      },
+    },
   },
 });
 
@@ -76,18 +148,58 @@ function CalculatorLayout() {
   };
 
   return (
-    <Box sx={{ minHeight: '100vh', bgcolor: 'background.default', py: 4 }}>
-      <Container maxWidth="xl">
-        <Typography 
-          variant="h4" 
-          component="h1" 
-          gutterBottom 
-          align="center"
-          sx={{ mb: 4, fontWeight: 'bold', color: 'primary.main' }}
-        >
-          Pipe Calculator
-        </Typography>
+    <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>
+      {/* Header */}
+      <Box
+        sx={{
+          bgcolor: KUZEYBORU_COLORS.primary,
+          color: 'white',
+          py: 2,
+          px: 3,
+          mb: 3,
+          boxShadow: '0 2px 8px rgba(76, 92, 101, 0.15)',
+        }}
+      >
+        <Container maxWidth="xl">
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+              {/* Logo placeholder - replace with actual logo */}
+              <Box
+                sx={{
+                  width: 40,
+                  height: 40,
+                  borderRadius: '50%',
+                  bgcolor: 'white',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontWeight: 700,
+                  color: KUZEYBORU_COLORS.primary,
+                  fontSize: '14px',
+                }}
+              >
+                KB
+              </Box>
+              <Typography
+                variant="h5"
+                component="h1"
+                sx={{ fontWeight: 700, letterSpacing: '-0.5px' }}
+              >
+                KUZEYBORU
+              </Typography>
+            </Box>
+            <Typography
+              variant="h6"
+              sx={{ fontWeight: 500, opacity: 0.9 }}
+            >
+              Pipe Calculator
+            </Typography>
+          </Box>
+        </Container>
+      </Box>
 
+      {/* Main Content */}
+      <Container maxWidth="xl" sx={{ pb: 4 }}>
         <Grid container spacing={3}>
           {/* Left Column - Inputs */}
           <Grid item xs={12} lg={6}>
@@ -95,22 +207,32 @@ function CalculatorLayout() {
             <PipesInput />
             <BoxesInput />
             <ConfigurationInput />
-            
-            <Box 
-              sx={{ 
-                display: 'flex', 
-                gap: 2, 
-                mt: 2,
-                justifyContent: 'center'
+
+            {/* Action Buttons */}
+            <Box
+              sx={{
+                display: 'flex',
+                gap: 2,
+                mt: 3,
+                justifyContent: 'center',
               }}
             >
               <Button
                 variant="contained"
+                color="secondary"
                 size="large"
                 startIcon={<CalculateIcon />}
                 onClick={handleCalculate}
                 disabled={!isValid || isCalculating}
-                sx={{ minWidth: 200 }}
+                sx={{
+                  minWidth: 200,
+                  py: 1.5,
+                  fontSize: '1rem',
+                  boxShadow: '0 4px 12px rgba(241, 8, 38, 0.3)',
+                  '&:hover': {
+                    boxShadow: '0 6px 16px rgba(241, 8, 38, 0.4)',
+                  },
+                }}
               >
                 {isCalculating ? 'Calculating...' : 'Calculate'}
               </Button>
@@ -120,7 +242,14 @@ function CalculatorLayout() {
                 startIcon={<RefreshIcon />}
                 onClick={handleReset}
                 disabled={isCalculating}
-                sx={{ minWidth: 150 }}
+                sx={{
+                  minWidth: 150,
+                  py: 1.5,
+                  borderWidth: 2,
+                  '&:hover': {
+                    borderWidth: 2,
+                  },
+                }}
               >
                 Reset
               </Button>

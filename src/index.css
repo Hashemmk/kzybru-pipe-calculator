@@ -1,11 +1,11 @@
 :root {
-  font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
+  font-family: 'Montserrat', Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
   line-height: 1.5;
   font-weight: 400;
 
-  color-scheme: light dark;
-  color: rgba(255, 255, 255, 0.87);
-  background-color: #242424;
+  color-scheme: light;
+  color: #4C5C65;
+  background-color: #F5F7F8;
 
   font-synthesis: none;
   text-rendering: optimizeLegibility;
@@ -22,9 +22,29 @@
 body {
   margin: 0;
   min-height: 100vh;
-  background-color: #f5f5f5;
+  background-color: #F5F7F8;
 }
 
 #root {
   min-height: 100vh;
+}
+
+/* KuzeyBoru brand scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #E7EBED;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #4C5C65;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #3a474e;
 }

@@ -3,6 +3,17 @@ export const DEFAULT_CONFIG = {
   allowance: 0
 };
 
+// KuzeyBoru Brand Colors
+export const BRAND_COLORS = {
+  primary: '#4C5C65',      // Dark Blue-Gray
+  accent: '#F10826',       // Red/Crimson
+  background: '#F5F7F8',   // Light Gray-White
+  paper: '#FFFFFF',        // White
+  lightGray: '#E7EBED',    // Secondary background
+  text: '#4C5C65',         // Dark Gray text
+  textSecondary: '#7E7E7E' // Secondary text
+};
+
 // Transportation type presets with dimensions in cm and weight in kg
 export const TRANSPORTATION_TYPES = {
   containerHC40: {
