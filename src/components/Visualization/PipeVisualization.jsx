@@ -70,17 +70,31 @@ export default function PipeVisualization() {
       }
     }
 
-    // Calculate space for standalone pipes above large pipes
-    const usedHeight = Math.ceil(largePipesPerContainer / largestPipe.pipesPerRow) * largestPipe.externalDiameter;
-    const remainingHeight = volume.height - usedHeight;
+    // Calculate space for standalone pipes (both side and top space)
+    const usedRows = Math.ceil(largePipesPerContainer / largestPipe.pipesPerRow);
+    const usedHeightByLarge = usedRows * largestPipe.externalDiameter;
+    const usedWidthByLarge = largestPipe.pipesPerRow * largestPipe.externalDiameter;
+
+    const remainingWidthOnSide = volume.width - usedWidthByLarge;
+    const remainingHeightOnTop = volume.height - usedHeightByLarge;
 
     // Calculate containers needed for standalone small pipes
     let containersForStandalone = 0;
     if (standaloneSmallPipes > 0 && sortedPipes.length > 1) {
       const smallPipe = sortedPipes[1]; // Use first small pipe as reference
-      const smallPipesPerRow = Math.floor(volume.width / smallPipe.externalDiameter);
-      const smallRowsAvailable = Math.floor(remainingHeight / smallPipe.externalDiameter);
-      const standalonePerContainer = Math.max(1, smallPipesPerRow * smallRowsAvailable);
+      const smallDiameter = smallPipe.externalDiameter;
+
+      // Side space capacity (beside large pipes, full height)
+      const sideColumns = Math.floor(remainingWidthOnSide / smallDiameter);
+      const sideRows = Math.floor(volume.height / smallDiameter);
+      const sideCapacity = sideColumns * sideRows;
+
+      // Top space capacity (above large pipes, width excluding side space)
+      const topColumns = Math.floor(usedWidthByLarge / smallDiameter);
+      const topRows = Math.floor(remainingHeightOnTop / smallDiameter);
+      const topCapacity = topColumns * topRows;
+
+      const standalonePerContainer = Math.max(1, sideCapacity + topCapacity);
       containersForStandalone = Math.ceil(standaloneSmallPipes / standalonePerContainer);
     }
 
@@ -208,10 +222,15 @@ export default function PipeVisualization() {
       pipeCounts[largestPipe.id].count++;
     }
 
-    // Calculate remaining space for standalone small pipes
+    // Calculate remaining spaces for standalone small pipes
+    // Space 1: Side space (remaining width beside large pipes)
+    // Space 2: Top space (remaining height above large pipes)
     const usedRows = Math.ceil(largePipesInThisContainer / largePipesPerRow);
-    const usedHeight = usedRows * outerDiameter;
-    const remainingHeight = volume.height - usedHeight;
+    const usedHeightByLarge = usedRows * outerDiameter;
+    const usedWidthByLarge = largePipesPerRow * outerDiameter;
+
+    const remainingWidthOnSide = volume.width - usedWidthByLarge;
+    const remainingHeightOnTop = volume.height - usedHeightByLarge;
 
     // Place standalone small pipes (those that couldn't nest or excess ones)
     for (const smallPipe of sortedPipes.slice(1)) {
@@ -225,10 +244,18 @@ export default function PipeVisualization() {
 
       if (totalStandalone <= 0) continue;
 
-      // Calculate standalone pipes per container (based on remaining space)
-      const smallPipesPerRow = Math.floor(volume.width / smallDiameter);
-      const smallRowsAvailable = Math.floor(remainingHeight / smallDiameter);
-      const standalonePerContainer = smallPipesPerRow * smallRowsAvailable;
+      // Calculate capacity in side space (columns beside large pipes, full height)
+      const sideColumns = Math.floor(remainingWidthOnSide / smallDiameter);
+      const sideRows = Math.floor(volume.height / smallDiameter);
+      const sideCapacity = sideColumns * sideRows;
+
+      // Calculate capacity in top space (full width, rows above large pipes)
+      const topColumns = Math.floor(volume.width / smallDiameter);
+      const topRows = Math.floor(remainingHeightOnTop / smallDiameter);
+      const topCapacity = topColumns * topRows;
+
+      // Total standalone capacity per container
+      const standalonePerContainer = sideCapacity + topCapacity;
 
       if (standalonePerContainer <= 0) continue;
 
@@ -237,26 +264,61 @@ export default function PipeVisualization() {
       const standaloneEndIdx = Math.min(standaloneStartIdx + standalonePerContainer, totalStandalone);
       const standalonePipesInThis = Math.max(0, standaloneEndIdx - standaloneStartIdx);
 
-      // Place them above the large pipes
-      for (let i = 0; i < standalonePipesInThis; i++) {
-        const col = i % smallPipesPerRow;
-        const row = Math.floor(i / smallPipesPerRow);
-        const y = usedHeight + smallRadius + row * smallDiameter;
+      let placed = 0;
 
-        if (y + smallRadius > volume.height) break;
+      // First, fill the side space (right of large pipes)
+      if (sideColumns > 0 && sideRows > 0) {
+        for (let row = 0; row < sideRows && placed < standalonePipesInThis; row++) {
+          for (let col = 0; col < sideColumns && placed < standalonePipesInThis; col++) {
+            const x = usedWidthByLarge + smallRadius + col * smallDiameter;
+            const y = smallRadius + row * smallDiameter;
 
-        items.push({
-          x: smallRadius + col * smallDiameter,
-          y: y,
-          radius: smallRadius,
-          diameter: smallDiameter,
-          pipeId: smallPipe.id,
-          pipeType: smallPipe,
-          color: PIPE_COLORS[colorIndices[smallPipe.id] % PIPE_COLORS.length],
-          nestedPipes: []
-        });
+            if (x + smallRadius > volume.width || y + smallRadius > volume.height) continue;
 
-        pipeCounts[smallPipe.id].count++;
+            items.push({
+              x: x,
+              y: y,
+              radius: smallRadius,
+              diameter: smallDiameter,
+              pipeId: smallPipe.id,
+              pipeType: smallPipe,
+              color: PIPE_COLORS[colorIndices[smallPipe.id] % PIPE_COLORS.length],
+              nestedPipes: []
+            });
+
+            pipeCounts[smallPipe.id].count++;
+            placed++;
+          }
+        }
+      }
+
+      // Then, fill the top space (above large pipes, full width)
+      if (topColumns > 0 && topRows > 0 && placed < standalonePipesInThis) {
+        for (let row = 0; row < topRows && placed < standalonePipesInThis; row++) {
+          for (let col = 0; col < topColumns && placed < standalonePipesInThis; col++) {
+            const x = smallRadius + col * smallDiameter;
+            const y = usedHeightByLarge + smallRadius + row * smallDiameter;
+
+            if (x + smallRadius > volume.width || y + smallRadius > volume.height) continue;
+
+            // Skip if this position overlaps with the side space we already filled
+            if (x >= usedWidthByLarge) continue;
+
+            items.push({
+              x: x,
+              y: y,
+              radius: smallRadius,
+              diameter: smallDiameter,
+              pipeId: smallPipe.id,
+              pipeType: smallPipe,
+              color: PIPE_COLORS[colorIndices[smallPipe.id] % PIPE_COLORS.length],
+              nestedPipes: []
+            });
+
+            pipeCounts[smallPipe.id].count++;
+            placed++;
+          }
+        }
       }
     }
 
