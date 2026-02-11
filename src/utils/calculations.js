@@ -65,8 +65,9 @@ export function calculateResults(_arrangement, pipes, _boxes, volume) {
 function calculatePipeResult(pipe, volume) {
   // Pipe dimensions are in mm
   const externalDiameterMm = pipe.externalDiameter || 0;
-  const internalDiameterMm = pipe.internalDiameter || 0;
   const wallThicknessMm = pipe.wallThickness || 0;
+  // Internal diameter is calculated from external diameter and wall thickness
+  const internalDiameterMm = externalDiameterMm - (2 * wallThicknessMm);
   const standardLengthMm = pipe.standardLength || 0;
   const quantityInMeters = pipe.quantityInMeters || 0;
   const weightPerMeter = pipe.weightPerMeter || 0;
@@ -279,10 +280,17 @@ function calculateVolumesNeededByPacking(pipeResults, totalWeight, volume) {
 }
 
 /**
- * Calculate wall thickness
+ * Calculate wall thickness from external and internal diameter
  */
 export function calculateWallThickness(externalDiameter, internalDiameter) {
   return (externalDiameter - internalDiameter) / 2;
+}
+
+/**
+ * Calculate internal diameter from external diameter and wall thickness
+ */
+export function calculateInternalDiameter(externalDiameter, wallThickness) {
+  return externalDiameter - (2 * wallThickness);
 }
 
 /**

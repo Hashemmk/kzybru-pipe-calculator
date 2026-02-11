@@ -39,12 +39,12 @@ export function validateInputs(volume, pipes, boxes, config) {
       if (!pipe.externalDiameter || pipe.externalDiameter <= 0) {
         errors[`${prefix}ExternalDiameter`] = `Pipe ${index + 1}: External diameter must be a positive number`;
       }
-      if (!pipe.internalDiameter || pipe.internalDiameter <= 0) {
-        errors[`${prefix}InternalDiameter`] = `Pipe ${index + 1}: Internal diameter must be a positive number`;
+      if (!pipe.wallThickness || pipe.wallThickness <= 0) {
+        errors[`${prefix}WallThickness`] = `Pipe ${index + 1}: Wall thickness must be a positive number`;
       }
-      if (pipe.externalDiameter && pipe.internalDiameter &&
-          pipe.externalDiameter <= pipe.internalDiameter) {
-        errors[`${prefix}Diameter`] = `Pipe ${index + 1}: External diameter must be greater than internal diameter`;
+      if (pipe.externalDiameter && pipe.wallThickness &&
+          pipe.wallThickness >= pipe.externalDiameter / 2) {
+        errors[`${prefix}WallThickness`] = `Pipe ${index + 1}: Wall thickness must be less than half of external diameter`;
       }
       // Standard Length validation (single pipe length in cm)
       if (!pipe.standardLength || pipe.standardLength <= 0) {

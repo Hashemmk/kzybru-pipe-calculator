@@ -150,7 +150,7 @@ function CalculatorLayout() {
   };
 
   return (
-    <Box sx={{ minHeight: '100vh', bgcolor: 'background.default', display: 'flex', flexDirection: 'column' }}>
+    <Box sx={{ minHeight: '100vh', height: '100%', bgcolor: 'background.default', display: 'flex', flexDirection: 'column' }}>
       {/* Header */}
       <Box
         sx={{
@@ -165,54 +165,57 @@ function CalculatorLayout() {
       >
         <Container maxWidth="xl">
           <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            {/* KuzeyBoru Logo - Red background with white text + Export Department */}
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+            {/* KuzeyBoru Logo - Red background with white text + Export Department inside */}
+            <Box
+              sx={{
+                bgcolor: KUZEYBORU_COLORS.accent,
+                borderRadius: '6px',
+                px: 1,
+                py: 0.01,
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'flex-start',
+                minWidth: 180,
+              }}
+            >
+              <Typography
+                sx={{
+                  color: 'white',
+                  fontWeight: 700,
+                  fontSize: '2rem',
+                  letterSpacing: '-0.5px',
+                  fontFamily: 'Montserrat, sans-serif',
+                  textTransform: 'lowercase',
+                }}
+              >
+                kuzeyboru
+              </Typography>
               <Box
                 sx={{
-                  bgcolor: KUZEYBORU_COLORS.accent,
+                  bgcolor: KUZEYBORU_COLORS.primary,
                   borderRadius: '6px',
-                  px: 2,
-                  py: 0.8,
-                  display: 'flex',
-                  alignItems: 'center',
+                  px: 1,
+                  py: 0.15,
+                  alignSelf: 'flex-end',
+                  mt: -0.5,
+                  mr: -1,
+                  
                 }}
               >
                 <Typography
                   sx={{
                     color: 'white',
-                    fontWeight: 700,
-                    fontSize: '1.5rem',
-                    letterSpacing: '-0.5px',
-                    fontFamily: 'Montserrat, sans-serif',
-                    textTransform: 'lowercase',
-                  }}
-                >
-                  kuzeyboru
-                </Typography>
-              </Box>
-              {/* Export Department Box */}
-              <Box
-                sx={{
-                  border: '2px solid',
-                  borderColor: KUZEYBORU_COLORS.accent,
-                  borderRadius: '6px',
-                  px: 1.5,
-                  py: 0.5,
-                }}
-              >
-                <Typography
-                  sx={{
-                    color: KUZEYBORU_COLORS.accent,
                     fontWeight: 600,
-                    fontSize: '0.85rem',
-                    fontFamily: 'Montserrat, sans-serif',
+                    fontSize: '0.65rem',
+                    fontStyle: 'italic',
+                    transform: 'skewX(-8deg)',
                   }}
                 >
                   Export Department
                 </Typography>
               </Box>
             </Box>
-            <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 1 }}>
+            <Box sx={{ display: 'flex', alignItems: 'flex-end', gap: 0.5 }}>
               <Typography
                 variant="h6"
                 sx={{
@@ -222,30 +225,43 @@ function CalculatorLayout() {
               >
                 Pipe Calculator
               </Typography>
-              <Typography
+              <Box
                 sx={{
-                  color: KUZEYBORU_COLORS.accent,
-                  fontWeight: 600,
-                  fontSize: '0.9rem',
-                  fontStyle: 'italic',
+                  bgcolor: KUZEYBORU_COLORS.accent,
+                  borderRadius: '10px',
+                  px: 1,
+                  py: 0.2,
+                  mb: -0.2,
                 }}
               >
-                Beta
-              </Typography>
+                <Typography
+                  sx={{
+                    color: 'white',
+                    fontWeight: 600,
+                    fontSize: '0.7rem',
+                    fontStyle: 'italic',
+                    transform: 'skewX(-8deg)',
+                  }}
+                >
+                  Beta
+                </Typography>
+              </Box>
             </Box>
           </Box>
         </Container>
       </Box>
 
       {/* Main Content */}
-      <Container maxWidth="xl" sx={{ pb: 4, flex: 1 }}>
-        <Grid container spacing={3}>
+      <Container maxWidth="xl" sx={{ pb: 4, flex: '1 0 auto' }}>
+        <Grid container spacing={3} sx={{ minHeight: '100%' }} alignItems="stretch">
           {/* Left Column - Inputs */}
           <Grid item xs={12} lg={6}>
-            <VolumeInput />
-            <PipesInput />
-            <BoxesInput />
-            <ConfigurationInput />
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+              <VolumeInput />
+              <PipesInput />
+              <BoxesInput />
+              <ConfigurationInput />
+            </Box>
 
             {/* Action Buttons */}
             <Box
@@ -296,9 +312,9 @@ function CalculatorLayout() {
           </Grid>
 
           {/* Right Column - Results & Visualization */}
-          <Grid item xs={12} lg={6}>
+          <Grid item xs={12} lg={6} sx={{ display: 'flex', flexDirection: 'column' }}>
             <ResultsDisplay />
-            <Box sx={{ mt: 3 }}>
+            <Box sx={{ mt: 3, flex: 1, display: 'flex', flexDirection: 'column' }}>
               <PipeVisualization />
             </Box>
           </Grid>
@@ -312,7 +328,9 @@ function CalculatorLayout() {
           bgcolor: KUZEYBORU_COLORS.primary,
           color: 'white',
           py: 3,
-          mt: 4,
+          mt: 'auto',
+          pt: 4,
+          flexShrink: 0,
         }}
       >
         <Container maxWidth="xl">

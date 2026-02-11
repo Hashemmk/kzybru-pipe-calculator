@@ -527,7 +527,7 @@ export default function PipeVisualization() {
   // No results yet
   if (!results || !results.pipeResults || results.pipeResults.length === 0) {
     return (
-      <Paper elevation={0} sx={{ p: 3, border: '1px solid', borderColor: 'divider' }}>
+      <Paper elevation={0} sx={{ p: 3, border: '1px solid', borderColor: 'divider', flex: 1, display: 'flex', flexDirection: 'column' }}>
         <Typography variant="h6" gutterBottom sx={{ color: 'primary.main', fontWeight: 600 }}>
           Cross-Section View
         </Typography>
@@ -537,7 +537,8 @@ export default function PipeVisualization() {
           alignItems="center"
           justifyContent="center"
           sx={{
-            height: 300,
+            flex: 1,
+            minHeight: 300,
             color: 'text.secondary',
             bgcolor: '#f8f9fa',
             borderRadius: 2,

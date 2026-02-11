@@ -97,10 +97,10 @@ export default function PipeRow({ pipe, index }) {
             <Grid item xs={12} sm={4}>
               <TextField
                 fullWidth
-                label="Internal Diameter"
+                label="Wall Thickness/Et Kalınlığı"
                 type="number"
-                value={pipe.internalDiameter || ''}
-                onChange={handleChange('internalDiameter')}
+                value={pipe.wallThickness || ''}
+                onChange={handleChange('wallThickness')}
                 InputProps={{
                   endAdornment: <span style={{ marginLeft: 8 }}>mm</span>
                 }}
@@ -110,14 +110,17 @@ export default function PipeRow({ pipe, index }) {
             <Grid item xs={12} sm={4}>
               <TextField
                 fullWidth
-                label="Wall Thickness/Et Kalınlığı"
+                label="Internal Diameter/İç Çap"
                 type="number"
-                value={pipe.wallThickness || ''}
-                onChange={handleChange('wallThickness')}
+                value={pipe.externalDiameter && pipe.wallThickness
+                  ? (pipe.externalDiameter - 2 * pipe.wallThickness).toFixed(2)
+                  : ''}
+                disabled
                 InputProps={{
                   endAdornment: <span style={{ marginLeft: 8 }}>mm</span>
                 }}
                 size="small"
+                helperText="Auto-calculated"
               />
             </Grid>
 
