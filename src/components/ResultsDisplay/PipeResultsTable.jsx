@@ -56,10 +56,10 @@ export default function PipeResultsTable({ pipeResults }) {
                 <TableCell>
                   <Box>
                     <Typography variant="body2" fontWeight="medium">
-                      {result.externalDiameter} cm
+                      {result.externalDiameterMm} mm
                     </Typography>
                     <Typography variant="caption" color="text.secondary">
-                      Int: {result.internalDiameter} cm
+                      Int: {result.internalDiameterMm} mm
                     </Typography>
                   </Box>
                 </TableCell>
@@ -81,7 +81,7 @@ export default function PipeResultsTable({ pipeResults }) {
                 <TableCell align="center">
                   <Box>
                     <Typography variant="body2">
-                      {result.pipesPerRow}×{result.pipesPerColumn}={result.pipesPerCrossSection}
+                      ({result.pipesPerRow}×{result.pipesPerColumn})×{result.pipesAlongLength}={result.pipesPerContainer}
                     </Typography>
                     <Typography variant="caption" color="text.secondary">
                       per container

@@ -16,11 +16,10 @@ import {
   MenuItem
 } from '@mui/material';
 import { useCalculator } from '../../context/CalculatorContext';
-import { getError } from '../../utils/validation';
 import { TRANSPORTATION_TYPES } from '../../constants/defaults';
 
 export default function VolumeInput() {
-  const { volume, updateVolume, errors } = useCalculator();
+  const { volume, updateVolume } = useCalculator();
 
   const handleTransportationChange = (event) => {
     const typeId = event.target.value;
@@ -78,8 +77,6 @@ export default function VolumeInput() {
             type="number"
             value={volume.length || ''}
             onChange={handleChange('length')}
-            error={!!getError(errors, 'volumeLength')}
-            helperText={getError(errors, 'volumeLength')}
             InputProps={{
               readOnly: isPreset,
               endAdornment: <span style={{ marginLeft: 8 }}>cm</span>
@@ -98,8 +95,6 @@ export default function VolumeInput() {
             type="number"
             value={volume.width || ''}
             onChange={handleChange('width')}
-            error={!!getError(errors, 'volumeWidth')}
-            helperText={getError(errors, 'volumeWidth')}
             InputProps={{
               readOnly: isPreset,
               endAdornment: <span style={{ marginLeft: 8 }}>cm</span>
@@ -118,8 +113,6 @@ export default function VolumeInput() {
             type="number"
             value={volume.height || ''}
             onChange={handleChange('height')}
-            error={!!getError(errors, 'volumeHeight')}
-            helperText={getError(errors, 'volumeHeight')}
             InputProps={{
               readOnly: isPreset,
               endAdornment: <span style={{ marginLeft: 8 }}>cm</span>
@@ -138,8 +131,6 @@ export default function VolumeInput() {
             type="number"
             value={volume.weightCapacity || ''}
             onChange={handleChange('weightCapacity')}
-            error={!!getError(errors, 'volumeWeightCapacity')}
-            helperText={getError(errors, 'volumeWeightCapacity')}
             InputProps={{
               readOnly: isPreset,
               endAdornment: <span style={{ marginLeft: 8 }}>kg</span>

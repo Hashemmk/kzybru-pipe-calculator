@@ -195,11 +195,11 @@ export default function ResultsDisplay() {
                 <Typography key={idx} variant="caption" display="block">
                   {detail.error ? (
                     <span style={{ color: 'red' }}>
-                      Ø{detail.diameter}cm: {detail.error}
+                      Ø{detail.diameterMm}mm: {detail.error}
                     </span>
                   ) : (
                     <span>
-                      Ø{detail.diameter}cm: {detail.pipesPerRow}×{detail.pipesPerColumn}={detail.pipesPerContainer} pipes/container,
+                      Ø{detail.diameterMm}mm: ({detail.pipesPerRow}×{detail.pipesPerColumn})×{detail.pipesAlongLength}={detail.pipesPerContainer} pipes/container,
                       {' '}{detail.pipesNeeded} needed → {detail.containersNeeded} container(s)
                     </span>
                   )}

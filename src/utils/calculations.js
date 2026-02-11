@@ -1,8 +1,8 @@
 /**
  * Calculation Logic
  * All units:
- * - Dimensions (diameter, length, width, height): centimeters (cm)
- * - Standard Length: centimeters (cm)
+ * - Pipe Dimensions (diameter, wall thickness, standard length): millimeters (mm)
+ * - Container Dimensions (length, width, height): centimeters (cm)
  * - Quantity in Meters: meters (m)
  * - Weight per meter: kg/m
  * - Total weight: kg
@@ -58,19 +58,25 @@ export function calculateResults(_arrangement, pipes, _boxes, volume) {
 
 /**
  * Calculate results for a single pipe type
- * @param {Object} pipe - Pipe specification
- * @param {Object} volume - Container dimensions
+ * @param {Object} pipe - Pipe specification (dimensions in mm)
+ * @param {Object} volume - Container dimensions (in cm)
  * @returns {Object} - Pipe calculation results
  */
 function calculatePipeResult(pipe, volume) {
-  const externalDiameter = pipe.externalDiameter || 0;
-  const internalDiameter = pipe.internalDiameter || 0;
-  const standardLengthCm = pipe.standardLength || 0;
+  // Pipe dimensions are in mm
+  const externalDiameterMm = pipe.externalDiameter || 0;
+  const internalDiameterMm = pipe.internalDiameter || 0;
+  const wallThicknessMm = pipe.wallThickness || 0;
+  const standardLengthMm = pipe.standardLength || 0;
   const quantityInMeters = pipe.quantityInMeters || 0;
   const weightPerMeter = pipe.weightPerMeter || 0;
 
+  // Convert mm to cm for calculations with container (which is in cm)
+  const externalDiameterCm = externalDiameterMm / 10;
+  const standardLengthCm = standardLengthMm / 10;
+
   // Standard length in meters
-  const standardLengthM = standardLengthCm / 100;
+  const standardLengthM = standardLengthMm / 1000;
 
   // Number of pipes = total length / single pipe length
   const numberOfPipes = standardLengthM > 0
@@ -82,13 +88,14 @@ function calculatePipeResult(pipe, volume) {
 
   // Volume calculation (bounding cylinder)
   // Volume = π × r² × total length (in cm)
-  const radiusCm = externalDiameter / 2;
+  const radiusCm = externalDiameterCm / 2;
   const totalLengthCm = quantityInMeters * 100; // Convert m to cm
   const volumeCm3 = Math.PI * radiusCm * radiusCm * totalLengthCm;
   const volumeM3 = volumeCm3 / 1000000;
 
   // Cross-section packing calculation
   // How many pipes fit in the container's width × height cross-section
+  // Container dimensions are in cm, pipe diameter converted to cm
   const containerWidth = volume.width || 0;
   const containerHeight = volume.height || 0;
   const containerLength = volume.length || 0;
@@ -96,20 +103,34 @@ function calculatePipeResult(pipe, volume) {
   let pipesPerRow = 0;
   let pipesPerColumn = 0;
   let pipesPerCrossSection = 0;
+  let pipesAlongLength = 0;
+  let pipesPerContainer = 0;
   let pipeFitsInLength = false;
 
-  if (externalDiameter > 0) {
-    pipesPerRow = Math.floor(containerWidth / externalDiameter);
-    pipesPerColumn = Math.floor(containerHeight / externalDiameter);
+  if (externalDiameterCm > 0 && standardLengthCm > 0) {
+    pipesPerRow = Math.floor(containerWidth / externalDiameterCm);
+    pipesPerColumn = Math.floor(containerHeight / externalDiameterCm);
     pipesPerCrossSection = pipesPerRow * pipesPerColumn;
     pipeFitsInLength = standardLengthCm <= containerLength;
+
+    // Calculate how many pipes can be stacked along the container length
+    // Pipes are placed horizontally along the length
+    pipesAlongLength = pipeFitsInLength ? Math.floor(containerLength / standardLengthCm) : 0;
+
+    // Total pipes per container = cross-section pipes × pipes along length
+    pipesPerContainer = pipesPerCrossSection * pipesAlongLength;
   }
 
   return {
     id: pipe.id,
-    externalDiameter,
-    internalDiameter,
-    wallThickness: (externalDiameter - internalDiameter) / 2,
+    // Store in mm for display
+    externalDiameterMm,
+    internalDiameterMm,
+    wallThicknessMm,
+    // Also store in cm for backward compatibility
+    externalDiameter: externalDiameterCm,
+    internalDiameter: internalDiameterMm / 10,
+    wallThickness: wallThicknessMm / 10,
     standardLengthCm,
     standardLengthM,
     quantityInMeters,
@@ -122,6 +143,8 @@ function calculatePipeResult(pipe, volume) {
     pipesPerRow,
     pipesPerColumn,
     pipesPerCrossSection,
+    pipesAlongLength,
+    pipesPerContainer,
     pipeFitsInLength
   };
 }
@@ -160,13 +183,13 @@ function calculateVolumesNeededByPacking(pipeResults, totalWeight, volume) {
   for (const pipe of pipeResults) {
     if (pipe.numberOfPipes === 0) continue;
 
-    const { externalDiameter, standardLengthCm, numberOfPipes, pipesPerCrossSection } = pipe;
+    const { externalDiameterMm, standardLengthCm, numberOfPipes, pipesPerCrossSection, pipesAlongLength, pipesPerContainer } = pipe;
 
     // Check if pipe length fits in container
     if (standardLengthCm > containerLength) {
       // Pipe is too long for container - cannot fit
       packingDetails.push({
-        diameter: externalDiameter,
+        diameterMm: externalDiameterMm,
         error: 'Pipe length exceeds container length',
         pipesNeeded: numberOfPipes,
         pipesPerContainer: 0,
@@ -176,13 +199,10 @@ function calculateVolumesNeededByPacking(pipeResults, totalWeight, volume) {
       continue;
     }
 
-    // How many pipes fit per container based on cross-section
-    const pipesPerContainer = pipesPerCrossSection;
-
     if (pipesPerContainer <= 0) {
       // Pipe diameter is too large for container cross-section
       packingDetails.push({
-        diameter: externalDiameter,
+        diameterMm: externalDiameterMm,
         error: 'Pipe diameter exceeds container dimensions',
         pipesNeeded: numberOfPipes,
         pipesPerContainer: 0,
@@ -196,9 +216,11 @@ function calculateVolumesNeededByPacking(pipeResults, totalWeight, volume) {
     const containersNeeded = Math.ceil(numberOfPipes / pipesPerContainer);
 
     packingDetails.push({
-      diameter: externalDiameter,
+      diameterMm: externalDiameterMm,
       pipesPerRow: pipe.pipesPerRow,
       pipesPerColumn: pipe.pipesPerColumn,
+      pipesAlongLength,
+      pipesPerCrossSection,
       pipesPerContainer,
       pipesNeeded: numberOfPipes,
       containersNeeded

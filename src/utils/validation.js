@@ -98,10 +98,12 @@ export function validateInputs(volume, pipes, boxes, config) {
   }
 
   // Check if volume height is sufficient for largest pipe
+  // Pipe diameter is in mm, volume height is in cm
   if (pipes.length > 0 && volume.height) {
-    const maxDiameter = Math.max(...pipes.map(p => p.externalDiameter));
-    if (maxDiameter > volume.height) {
-      errors.volumeHeight = `Volume height (${volume.height}cm) must be at least as large as the largest pipe diameter (${maxDiameter}cm)`;
+    const maxDiameterMm = Math.max(...pipes.map(p => p.externalDiameter || 0));
+    const maxDiameterCm = maxDiameterMm / 10;
+    if (maxDiameterCm > volume.height) {
+      errors.volumeHeight = `Volume height (${volume.height}cm) must be at least as large as the largest pipe diameter (${maxDiameterMm}mm = ${maxDiameterCm}cm)`;
     }
   }
 

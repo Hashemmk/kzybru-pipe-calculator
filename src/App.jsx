@@ -38,28 +38,29 @@ const KUZEYBORU_COLORS = {
 const theme = createTheme({
   palette: {
     primary: {
-      main: KUZEYBORU_COLORS.primary,
-      light: '#6B7B84',
-      dark: '#3a474e',
+      main: KUZEYBORU_COLORS.accent,  // Red as primary
+      light: '#ff3d4d',
+      dark: '#c00620',
       contrastText: '#ffffff',
     },
     secondary: {
-      main: KUZEYBORU_COLORS.accent,
-      light: '#ff3d4d',
-      dark: '#c00620',
+      main: KUZEYBORU_COLORS.primary,  // Dark gray as secondary
+      light: '#6B7B84',
+      dark: '#3a474e',
       contrastText: '#ffffff',
     },
     success: {
       main: '#4caf50',
     },
     warning: {
-      main: '#ff9800',
+      main: KUZEYBORU_COLORS.accent,  // Red for warning cards
+      contrastText: '#ffffff',
     },
     error: {
       main: KUZEYBORU_COLORS.accent,
     },
     info: {
-      main: KUZEYBORU_COLORS.primary,
+      main: KUZEYBORU_COLORS.accent,  // Red for info cards
     },
     background: {
       default: KUZEYBORU_COLORS.background,
@@ -116,7 +117,8 @@ const theme = createTheme({
           borderRadius: 8,
           padding: '10px 24px',
         },
-        containedSecondary: {
+        containedPrimary: {
+          backgroundColor: KUZEYBORU_COLORS.accent,
           '&:hover': {
             backgroundColor: '#c00620',
           },
@@ -148,7 +150,7 @@ function CalculatorLayout() {
   };
 
   return (
-    <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>
+    <Box sx={{ minHeight: '100vh', bgcolor: 'background.default', display: 'flex', flexDirection: 'column' }}>
       {/* Header */}
       <Box
         sx={{
@@ -163,45 +165,80 @@ function CalculatorLayout() {
       >
         <Container maxWidth="xl">
           <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            {/* KuzeyBoru Logo - Red background with white text */}
-            <Box
-              sx={{
-                bgcolor: KUZEYBORU_COLORS.accent,
-                borderRadius: '6px',
-                px: 2,
-                py: 0.8,
-                display: 'flex',
-                alignItems: 'center',
-              }}
-            >
-              <Typography
+            {/* KuzeyBoru Logo - Red background with white text + Export Department */}
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+              <Box
                 sx={{
-                  color: 'white',
-                  fontWeight: 700,
-                  fontSize: '1.5rem',
-                  letterSpacing: '-0.5px',
-                  fontFamily: 'Montserrat, sans-serif',
-                  textTransform: 'lowercase',
+                  bgcolor: KUZEYBORU_COLORS.accent,
+                  borderRadius: '6px',
+                  px: 2,
+                  py: 0.8,
+                  display: 'flex',
+                  alignItems: 'center',
                 }}
               >
-                kuzeyboru
+                <Typography
+                  sx={{
+                    color: 'white',
+                    fontWeight: 700,
+                    fontSize: '1.5rem',
+                    letterSpacing: '-0.5px',
+                    fontFamily: 'Montserrat, sans-serif',
+                    textTransform: 'lowercase',
+                  }}
+                >
+                  kuzeyboru
+                </Typography>
+              </Box>
+              {/* Export Department Box */}
+              <Box
+                sx={{
+                  border: '2px solid',
+                  borderColor: KUZEYBORU_COLORS.accent,
+                  borderRadius: '6px',
+                  px: 1.5,
+                  py: 0.5,
+                }}
+              >
+                <Typography
+                  sx={{
+                    color: KUZEYBORU_COLORS.accent,
+                    fontWeight: 600,
+                    fontSize: '0.85rem',
+                    fontFamily: 'Montserrat, sans-serif',
+                  }}
+                >
+                  Export Department
+                </Typography>
+              </Box>
+            </Box>
+            <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 1 }}>
+              <Typography
+                variant="h6"
+                sx={{
+                  fontWeight: 600,
+                  color: KUZEYBORU_COLORS.primary,
+                }}
+              >
+                Pipe Calculator
+              </Typography>
+              <Typography
+                sx={{
+                  color: KUZEYBORU_COLORS.accent,
+                  fontWeight: 600,
+                  fontSize: '0.9rem',
+                  fontStyle: 'italic',
+                }}
+              >
+                Beta
               </Typography>
             </Box>
-            <Typography
-              variant="h6"
-              sx={{
-                fontWeight: 600,
-                color: KUZEYBORU_COLORS.primary,
-              }}
-            >
-              Pipe Calculator
-            </Typography>
           </Box>
         </Container>
       </Box>
 
       {/* Main Content */}
-      <Container maxWidth="xl" sx={{ pb: 4 }}>
+      <Container maxWidth="xl" sx={{ pb: 4, flex: 1 }}>
         <Grid container spacing={3}>
           {/* Left Column - Inputs */}
           <Grid item xs={12} lg={6}>
@@ -221,7 +258,7 @@ function CalculatorLayout() {
             >
               <Button
                 variant="contained"
-                color="secondary"
+                color="primary"
                 size="large"
                 startIcon={<CalculateIcon />}
                 onClick={handleCalculate}
@@ -267,6 +304,33 @@ function CalculatorLayout() {
           </Grid>
         </Grid>
       </Container>
+
+      {/* Footer */}
+      <Box
+        component="footer"
+        sx={{
+          bgcolor: KUZEYBORU_COLORS.primary,
+          color: 'white',
+          py: 3,
+          mt: 4,
+        }}
+      >
+        <Container maxWidth="xl">
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 2 }}>
+            <Box>
+              <Typography variant="body1" fontWeight="600">
+                KuzeyBoru
+              </Typography>
+              <Typography variant="body2" sx={{ opacity: 0.8 }}>
+                Export Department - Pipe Calculator
+              </Typography>
+            </Box>
+            <Typography variant="body2" sx={{ opacity: 0.7 }}>
+              © {new Date().getFullYear()} KuzeyBoru. All rights reserved.
+            </Typography>
+          </Box>
+        </Container>
+      </Box>
     </Box>
   );
 }

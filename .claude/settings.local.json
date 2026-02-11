@@ -4,7 +4,14 @@
       "Bash(dir:*)",
       "Bash(npm run build:*)",
       "Bash(curl:*)",
-      "Bash(timeout 30 npm run build:*)"
+      "Bash(timeout 30 npm run build:*)",
+      "Bash(npm run deploy:*)",
+      "Bash(cat:*)",
+      "Bash(git fetch:*)",
+      "Bash(npx gh-pages-clean)",
+      "Bash(git remote set-url:*)",
+      "Bash(timeout:*)",
+      "Bash(gh api:*)"
     ]
   }
 }

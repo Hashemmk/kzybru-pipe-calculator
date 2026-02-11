@@ -53,7 +53,7 @@ export default function PipeVisualization() {
 
     // Get largest pipe info
     const largestPipe = sortedPipes[0];
-    const largePipesPerContainer = largestPipe.pipesPerCrossSection;
+    const largePipesPerContainer = largestPipe.pipesPerContainer;
     const containersForLarge = Math.ceil(largestPipe.numberOfPipes / largePipesPerContainer);
 
     // Calculate standalone small pipes (can't nest or excess)
@@ -142,7 +142,9 @@ export default function PipeVisualization() {
     const outerRadius = outerDiameter / 2;
     const largePipesPerRow = largestPipe.pipesPerRow;
     const largePipesPerColumn = largestPipe.pipesPerColumn;
-    const largePipesPerContainer = largePipesPerRow * largePipesPerColumn;
+    const largePipesPerCrossSection = largePipesPerRow * largePipesPerColumn;
+    // Use the full pipesPerContainer which includes pipes along length
+    const largePipesPerContainer = largestPipe.pipesPerContainer || largePipesPerCrossSection;
 
     // Find smaller pipes that can nest inside the largest pipe
     const nestingCandidates = sortedPipes.slice(1).filter(
@@ -173,10 +175,15 @@ export default function PipeVisualization() {
     }
 
     // Place large pipes in grid and nest smaller pipes inside
+    // For visualization, we only show the cross-section (pipes per row × pipes per column)
+    // The actual count includes pipes along the length, but we visualize only cross-section
     let nestedCounters = {};
     nestingCandidates.forEach(c => { nestedCounters[c.id] = 0; });
 
-    for (let i = 0; i < largePipesInThisContainer; i++) {
+    // For visualization, show only cross-section pipes (max = pipesPerCrossSection)
+    const pipesToVisualize = Math.min(largePipesInThisContainer, largePipesPerCrossSection);
+
+    for (let i = 0; i < pipesToVisualize; i++) {
       const col = i % largePipesPerRow;
       const row = Math.floor(i / largePipesPerRow);
 
@@ -520,7 +527,7 @@ export default function PipeVisualization() {
   // No results yet
   if (!results || !results.pipeResults || results.pipeResults.length === 0) {
     return (
-      <Paper elevation={0} sx={{ p: 3, height: '100%', border: '1px solid', borderColor: 'divider' }}>
+      <Paper elevation={0} sx={{ p: 3, border: '1px solid', borderColor: 'divider' }}>
         <Typography variant="h6" gutterBottom sx={{ color: 'primary.main', fontWeight: 600 }}>
           Cross-Section View
         </Typography>
@@ -552,7 +559,7 @@ export default function PipeVisualization() {
   // No arrangement for current container
   if (!arrangement || arrangement.items.length === 0) {
     return (
-      <Paper elevation={0} sx={{ p: 3, height: '100%', border: '1px solid', borderColor: 'divider' }}>
+      <Paper elevation={0} sx={{ p: 3, border: '1px solid', borderColor: 'divider' }}>
         <Typography variant="h6" gutterBottom sx={{ color: 'primary.main', fontWeight: 600 }}>
           Cross-Section View
         </Typography>
@@ -593,7 +600,7 @@ export default function PipeVisualization() {
   const pipeCount = arrangement.items.length;
 
   return (
-    <Paper elevation={0} sx={{ p: 3, height: '100%', border: '1px solid', borderColor: 'divider' }}>
+    <Paper elevation={0} sx={{ p: 3, border: '1px solid', borderColor: 'divider' }}>
       {/* Header */}
       <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
         <Typography variant="h6" sx={{ color: 'primary.main', fontWeight: 600 }}>
@@ -631,7 +638,7 @@ export default function PipeVisualization() {
               // Calculate pipes for each container
               let containerPipes = 0;
               for (const pipeResult of results.pipeResults) {
-                const perContainer = pipeResult.pipesPerCrossSection;
+                const perContainer = pipeResult.pipesPerContainer;
                 const startIdx = i * perContainer;
                 const endIdx = Math.min(startIdx + perContainer, pipeResult.numberOfPipes);
                 containerPipes += Math.max(0, endIdx - startIdx);

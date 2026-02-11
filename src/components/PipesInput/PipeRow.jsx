@@ -15,38 +15,24 @@ import {
 } from '@mui/material';
 import { Delete as DeleteIcon, ExpandMore as ExpandMoreIcon, ExpandLess as ExpandLessIcon } from '@mui/icons-material';
 import { useCalculator } from '../../context/CalculatorContext';
-import { getError } from '../../utils/validation';
-import { calculateWallThickness } from '../../utils/calculations';
 
 export default function PipeRow({ pipe, index }) {
-  const { updatePipe, removePipe, errors } = useCalculator();
+  const { updatePipe, removePipe } = useCalculator();
   const [expanded, setExpanded] = React.useState(true);
 
   const handleChange = (field) => (event) => {
     const value = parseFloat(event.target.value) || 0;
-    const updates = { [field]: value };
-
-    // Auto-calculate wall thickness when external or internal diameter changes
-    if (field === 'externalDiameter' || field === 'internalDiameter') {
-      const externalDiameter = field === 'externalDiameter' ? value : pipe.externalDiameter;
-      const internalDiameter = field === 'internalDiameter' ? value : pipe.internalDiameter;
-      if (externalDiameter && internalDiameter) {
-        updates.wallThickness = calculateWallThickness(externalDiameter, internalDiameter);
-      }
-    }
-
-    updatePipe(pipe.id, updates);
+    updatePipe(pipe.id, { [field]: value });
   };
 
   const handleRemove = () => {
     removePipe(pipe.id);
   };
 
-  const prefix = `pipe${index}`;
-
   // Calculate number of pipes from quantity and standard length
+  // standardLength is in mm, convert to meters for calculation
   const numberOfPipes = pipe.standardLength > 0 && pipe.quantityInMeters > 0
-    ? Math.ceil(pipe.quantityInMeters / (pipe.standardLength / 100))
+    ? Math.ceil(pipe.quantityInMeters / (pipe.standardLength / 1000))
     : 0;
 
   return (
@@ -65,7 +51,7 @@ export default function PipeRow({ pipe, index }) {
           </Typography>
           {pipe.externalDiameter > 0 && (
             <Typography variant="body2" color="text.secondary">
-              ({pipe.externalDiameter} cm)
+              ({pipe.externalDiameter} mm)
             </Typography>
           )}
           {numberOfPipes > 0 && (
@@ -102,10 +88,8 @@ export default function PipeRow({ pipe, index }) {
                 type="number"
                 value={pipe.externalDiameter || ''}
                 onChange={handleChange('externalDiameter')}
-                error={!!getError(errors, `${prefix}ExternalDiameter`)}
-                helperText={getError(errors, `${prefix}ExternalDiameter`)}
                 InputProps={{
-                  endAdornment: <span style={{ marginLeft: 8 }}>cm</span>
+                  endAdornment: <span style={{ marginLeft: 8 }}>mm</span>
                 }}
                 size="small"
               />
@@ -117,10 +101,8 @@ export default function PipeRow({ pipe, index }) {
                 type="number"
                 value={pipe.internalDiameter || ''}
                 onChange={handleChange('internalDiameter')}
-                error={!!getError(errors, `${prefix}InternalDiameter`)}
-                helperText={getError(errors, `${prefix}InternalDiameter`)}
                 InputProps={{
-                  endAdornment: <span style={{ marginLeft: 8 }}>cm</span>
+                  endAdornment: <span style={{ marginLeft: 8 }}>mm</span>
                 }}
                 size="small"
               />
@@ -128,20 +110,14 @@ export default function PipeRow({ pipe, index }) {
             <Grid item xs={12} sm={4}>
               <TextField
                 fullWidth
-                label="Wall Thickness"
+                label="Wall Thickness/Et Kalınlığı"
                 type="number"
                 value={pipe.wallThickness || ''}
                 onChange={handleChange('wallThickness')}
                 InputProps={{
-                  readOnly: true,
-                  endAdornment: <span style={{ marginLeft: 8 }}>cm (auto)</span>
+                  endAdornment: <span style={{ marginLeft: 8 }}>mm</span>
                 }}
                 size="small"
-                sx={{
-                  '& .MuiInputBase-root': {
-                    backgroundColor: 'action.disabledBackground'
-                  }
-                }}
               />
             </Grid>
 
@@ -153,10 +129,9 @@ export default function PipeRow({ pipe, index }) {
                 type="number"
                 value={pipe.standardLength || ''}
                 onChange={handleChange('standardLength')}
-                error={!!getError(errors, `${prefix}StandardLength`)}
-                helperText={getError(errors, `${prefix}StandardLength`) || 'Single pipe length'}
+                helperText="Single pipe length"
                 InputProps={{
-                  endAdornment: <span style={{ marginLeft: 8 }}>cm</span>
+                  endAdornment: <span style={{ marginLeft: 8 }}>mm</span>
                 }}
                 size="small"
               />
@@ -168,8 +143,7 @@ export default function PipeRow({ pipe, index }) {
                 type="number"
                 value={pipe.quantityInMeters || ''}
                 onChange={handleChange('quantityInMeters')}
-                error={!!getError(errors, `${prefix}QuantityInMeters`)}
-                helperText={getError(errors, `${prefix}QuantityInMeters`) || 'Total length required'}
+                helperText="Total length required"
                 InputProps={{
                   endAdornment: <span style={{ marginLeft: 8 }}>m</span>
                 }}
@@ -183,8 +157,6 @@ export default function PipeRow({ pipe, index }) {
                 type="number"
                 value={pipe.weightPerMeter || ''}
                 onChange={handleChange('weightPerMeter')}
-                error={!!getError(errors, `${prefix}WeightPerMeter`)}
-                helperText={getError(errors, `${prefix}WeightPerMeter`)}
                 InputProps={{
                   endAdornment: <span style={{ marginLeft: 8 }}>kg/m</span>
                 }}
@@ -198,7 +170,7 @@ export default function PipeRow({ pipe, index }) {
             <Box mt={2} p={1} bgcolor="grey.100" borderRadius={1}>
               <Typography variant="body2">
                 <strong>{numberOfPipes}</strong> pipes x{' '}
-                <strong>{(pipe.standardLength / 100).toFixed(1)}m</strong> ={' '}
+                <strong>{(pipe.standardLength / 1000).toFixed(1)}m</strong> ={' '}
                 <strong>{pipe.quantityInMeters}m</strong> total |{' '}
                 Weight: <strong>{(pipe.quantityInMeters * pipe.weightPerMeter).toFixed(1)} kg</strong>
               </Typography>
