@@ -33,7 +33,7 @@ export default function PipeVisualization() {
   const [activeContainer, setActiveContainer] = useState(0);
 
   // Calculate total containers needed and pipes per container
-  // Takes into account nesting optimization
+  // Uses the actual volumesNeeded from results for accuracy
   const containerInfo = useMemo(() => {
     if (!results || !results.pipeResults || results.pipeResults.length === 0 || !volume) {
       return { totalContainers: 0, pipesPerContainer: 0, totalPipes: 0 };
@@ -51,61 +51,115 @@ export default function PipeVisualization() {
     // Total pipes count
     const totalPipesNeeded = sortedPipes.reduce((sum, p) => sum + p.numberOfPipes, 0);
 
-    // Get largest pipe info
+    // Get largest pipe info for pipesPerContainer
     const largestPipe = sortedPipes[0];
     const largePipesPerContainer = largestPipe.pipesPerContainer;
-    const containersForLarge = Math.ceil(largestPipe.numberOfPipes / largePipesPerContainer);
 
-    // Calculate standalone small pipes (can't nest or excess)
-    let standaloneSmallPipes = 0;
-    for (const smallPipe of sortedPipes.slice(1)) {
-      const canNest = smallPipe.externalDiameter <= largestPipe.internalDiameter;
-      if (canNest) {
-        // Excess beyond what can nest
-        const excess = Math.max(0, smallPipe.numberOfPipes - largestPipe.numberOfPipes);
-        standaloneSmallPipes += excess;
-      } else {
-        // Can't nest at all
-        standaloneSmallPipes += smallPipe.numberOfPipes;
-      }
-    }
-
-    // Calculate space for standalone pipes (both side and top space)
-    const usedRows = Math.ceil(largePipesPerContainer / largestPipe.pipesPerRow);
-    const usedHeightByLarge = usedRows * largestPipe.externalDiameter;
-    const usedWidthByLarge = largestPipe.pipesPerRow * largestPipe.externalDiameter;
-
-    const remainingWidthOnSide = volume.width - usedWidthByLarge;
-    const remainingHeightOnTop = volume.height - usedHeightByLarge;
-
-    // Calculate containers needed for standalone small pipes
-    let containersForStandalone = 0;
-    if (standaloneSmallPipes > 0 && sortedPipes.length > 1) {
-      const smallPipe = sortedPipes[1]; // Use first small pipe as reference
-      const smallDiameter = smallPipe.externalDiameter;
-
-      // Side space capacity (beside large pipes, full height)
-      const sideColumns = Math.floor(remainingWidthOnSide / smallDiameter);
-      const sideRows = Math.floor(volume.height / smallDiameter);
-      const sideCapacity = sideColumns * sideRows;
-
-      // Top space capacity (above large pipes, width excluding side space)
-      const topColumns = Math.floor(usedWidthByLarge / smallDiameter);
-      const topRows = Math.floor(remainingHeightOnTop / smallDiameter);
-      const topCapacity = topColumns * topRows;
-
-      const standalonePerContainer = Math.max(1, sideCapacity + topCapacity);
-      containersForStandalone = Math.ceil(standaloneSmallPipes / standalonePerContainer);
-    }
-
-    // Total containers = max of (containers for large, containers for standalone excess)
-    const totalContainers = Math.max(containersForLarge, containersForStandalone, 1);
+    // Use the actual volumesNeeded from results (calculated by the calculation engine)
+    // This ensures consistency between the visualization and the results display
+    const totalContainers = results.volumesNeeded?.total || 1;
 
     return {
       totalContainers,
       pipesPerContainer: largePipesPerContainer,
       totalPipes: totalPipesNeeded
     };
+  }, [results, volume]);
+
+  // Calculate actual pipes per container (for tab labels)
+  const getPipesForContainer = useCallback((containerIndex) => {
+    if (!results || !results.pipeResults || results.pipeResults.length === 0 || !volume) {
+      return 0;
+    }
+
+    const sortedPipes = [...results.pipeResults]
+      .filter(p => p.numberOfPipes > 0)
+      .sort((a, b) => b.externalDiameter - a.externalDiameter);
+
+    if (sortedPipes.length === 0) return 0;
+
+    const largestPipe = sortedPipes[0];
+    const largePipesPerContainer = largestPipe.pipesPerContainer || 0;
+
+    // Nesting candidates
+    const nestingCandidates = sortedPipes.slice(1).filter(
+      p => p.externalDiameter <= largestPipe.internalDiameter
+    );
+
+    // Track remaining pipes
+    const remainingPipes = {};
+    sortedPipes.forEach(p => {
+      remainingPipes[p.id] = p.numberOfPipes;
+    });
+
+    // Calculate standalone capacity helper
+    const getStandaloneCapacity = (smallPipe, largePipesInContainer) => {
+      const smallDiameter = smallPipe.externalDiameter;
+
+      if (largePipesInContainer > 0) {
+        const usedRows = Math.ceil(largePipesInContainer / (largestPipe.pipesPerRow || 1));
+        const usedHeightByLarge = usedRows * largestPipe.externalDiameter;
+        const usedWidthByLarge = Math.min(largePipesInContainer, largestPipe.pipesPerRow || 1) * largestPipe.externalDiameter;
+        const remainingWidthOnSide = (volume?.width || 0) - usedWidthByLarge;
+        const remainingHeightOnTop = (volume?.height || 0) - usedHeightByLarge;
+
+        const sideColumns = Math.floor(remainingWidthOnSide / smallDiameter);
+        const sideRows = Math.floor((volume?.height || 0) / smallDiameter);
+        const sideCapacity = Math.max(0, sideColumns * sideRows);
+
+        const topColumns = Math.floor(usedWidthByLarge / smallDiameter);
+        const topRows = Math.floor(remainingHeightOnTop / smallDiameter);
+        const topCapacity = Math.max(0, topColumns * topRows);
+
+        return (sideCapacity + topCapacity) * (largestPipe.pipesAlongLength || 1);
+      } else {
+        // No large pipes - small pipes use entire container
+        const smallPipesPerRow = Math.floor((volume?.width || 0) / smallDiameter);
+        const smallPipesPerColumn = Math.floor((volume?.height || 0) / smallDiameter);
+        const smallPipesAlongLength = Math.floor((volume?.length || 0) / (smallPipe.standardLengthCm || 1));
+        return smallPipesPerRow * smallPipesPerColumn * smallPipesAlongLength;
+      }
+    };
+
+    // Skip to the requested container
+    for (let i = 0; i < containerIndex; i++) {
+      const largePipesInPrev = Math.min(remainingPipes[largestPipe.id] || 0, largePipesPerContainer);
+      remainingPipes[largestPipe.id] -= largePipesInPrev;
+
+      // Nested pipes
+      for (const smallPipe of nestingCandidates) {
+        const nestedCount = Math.min(remainingPipes[smallPipe.id] || 0, largePipesInPrev);
+        remainingPipes[smallPipe.id] -= nestedCount;
+      }
+
+      // Standalone small pipes
+      for (const smallPipe of sortedPipes.slice(1)) {
+        const standaloneCapacity = getStandaloneCapacity(smallPipe, largePipesInPrev);
+        const standaloneCount = Math.min(remainingPipes[smallPipe.id] || 0, standaloneCapacity);
+        remainingPipes[smallPipe.id] -= standaloneCount;
+      }
+    }
+
+    // Calculate pipes for the requested container
+    let totalPipes = 0;
+    const largePipesInThis = Math.min(remainingPipes[largestPipe.id] || 0, largePipesPerContainer);
+    totalPipes += largePipesInThis;
+
+    // Nested pipes
+    for (const smallPipe of nestingCandidates) {
+      const nestedCount = Math.min(remainingPipes[smallPipe.id] || 0, largePipesInThis);
+      totalPipes += nestedCount;
+      remainingPipes[smallPipe.id] -= nestedCount;
+    }
+
+    // Standalone small pipes
+    for (const smallPipe of sortedPipes.slice(1)) {
+      const standaloneCapacity = getStandaloneCapacity(smallPipe, largePipesInThis);
+      const standaloneCount = Math.min(remainingPipes[smallPipe.id] || 0, standaloneCapacity);
+      totalPipes += standaloneCount;
+    }
+
+    return totalPipes;
   }, [results, volume]);
 
   // Generate arrangement for the active container with NESTING support
@@ -232,44 +286,77 @@ export default function PipeVisualization() {
     // Calculate remaining spaces for standalone small pipes
     // Space 1: Side space (remaining width beside large pipes)
     // Space 2: Top space (remaining height above large pipes)
-    const usedRows = Math.ceil(largePipesInThisContainer / largePipesPerRow);
-    const usedHeightByLarge = usedRows * outerDiameter;
-    const usedWidthByLarge = largePipesPerRow * outerDiameter;
+    const visualizedLargeRows = Math.ceil(pipesToVisualize / largePipesPerRow);
+    const usedHeightByLarge = visualizedLargeRows * outerDiameter;
+    const usedWidthByLarge = Math.min(pipesToVisualize, largePipesPerRow) * outerDiameter;
 
     const remainingWidthOnSide = volume.width - usedWidthByLarge;
     const remainingHeightOnTop = volume.height - usedHeightByLarge;
 
-    // Place standalone small pipes (those that couldn't nest or excess ones)
+    // Calculate how many small pipes were nested/standalone in previous containers
+    // Track remaining small pipes for this container
+    const smallPipeRemaining = {};
+    for (const smallPipe of sortedPipes.slice(1)) {
+      let remaining = smallPipe.numberOfPipes;
+
+      // Subtract nested pipes from previous containers
+      const canNest = smallPipe.externalDiameter <= largestPipe.internalDiameter;
+      if (canNest) {
+        const nestedBefore = Math.min(remaining, totalLargePipesBefore);
+        remaining -= nestedBefore;
+        // Also subtract nested in this container
+        const nestedInThis = nestedPipesForThisContainer[smallPipe.id] || 0;
+        remaining -= nestedInThis;
+      }
+
+      // Subtract standalone pipes from previous containers
+      for (let prevContainer = 0; prevContainer < activeContainer; prevContainer++) {
+        const prevLargeStart = prevContainer * largePipesPerContainer;
+        const prevLargeEnd = Math.min(prevLargeStart + largePipesPerContainer, largestPipe.numberOfPipes);
+        const prevLargePipes = Math.max(0, prevLargeEnd - prevLargeStart);
+
+        // Calculate standalone capacity for previous container
+        const prevRows = Math.ceil(Math.min(prevLargePipes, largePipesPerCrossSection) / largePipesPerRow);
+        const prevUsedHeight = prevRows * outerDiameter;
+        const prevUsedWidth = Math.min(Math.min(prevLargePipes, largePipesPerCrossSection), largePipesPerRow) * outerDiameter;
+
+        const prevSideCols = Math.floor((volume.width - prevUsedWidth) / smallPipe.externalDiameter);
+        const prevSideRows = Math.floor(volume.height / smallPipe.externalDiameter);
+        const prevTopCols = Math.floor(prevUsedWidth / smallPipe.externalDiameter);
+        const prevTopRows = Math.floor((volume.height - prevUsedHeight) / smallPipe.externalDiameter);
+
+        const prevStandaloneCapacity = (prevSideCols * prevSideRows + prevTopCols * prevTopRows);
+        remaining -= Math.min(remaining, prevStandaloneCapacity);
+      }
+
+      smallPipeRemaining[smallPipe.id] = Math.max(0, remaining);
+    }
+
+    // Place standalone small pipes for this container
     for (const smallPipe of sortedPipes.slice(1)) {
       const smallDiameter = smallPipe.externalDiameter;
       const smallRadius = smallDiameter / 2;
 
-      // Calculate how many small pipes are allocated to standalone placement
-      // = total small pipes - total that can be nested
-      const totalNestable = Math.min(smallPipe.numberOfPipes, largestPipe.numberOfPipes);
-      const totalStandalone = smallPipe.numberOfPipes - totalNestable;
-
-      if (totalStandalone <= 0) continue;
+      const standalonePipesAvailable = smallPipeRemaining[smallPipe.id] || 0;
+      if (standalonePipesAvailable <= 0) continue;
 
       // Calculate capacity in side space (columns beside large pipes, full height)
       const sideColumns = Math.floor(remainingWidthOnSide / smallDiameter);
       const sideRows = Math.floor(volume.height / smallDiameter);
       const sideCapacity = sideColumns * sideRows;
 
-      // Calculate capacity in top space (full width, rows above large pipes)
-      const topColumns = Math.floor(volume.width / smallDiameter);
+      // Calculate capacity in top space (above large pipes, only in the width used by large)
+      const topColumns = Math.floor(usedWidthByLarge / smallDiameter);
       const topRows = Math.floor(remainingHeightOnTop / smallDiameter);
       const topCapacity = topColumns * topRows;
 
-      // Total standalone capacity per container
-      const standalonePerContainer = sideCapacity + topCapacity;
+      // Total standalone capacity for cross-section view
+      const standaloneCapacityInView = sideCapacity + topCapacity;
 
-      if (standalonePerContainer <= 0) continue;
+      if (standaloneCapacityInView <= 0) continue;
 
-      // Which standalone pipes go in this container
-      const standaloneStartIdx = activeContainer * standalonePerContainer;
-      const standaloneEndIdx = Math.min(standaloneStartIdx + standalonePerContainer, totalStandalone);
-      const standalonePipesInThis = Math.max(0, standaloneEndIdx - standaloneStartIdx);
+      // How many to place in this view (limited by capacity and available)
+      const standalonePipesInThis = Math.min(standalonePipesAvailable, standaloneCapacityInView);
 
       let placed = 0;
 
@@ -635,22 +722,12 @@ export default function PipeVisualization() {
               }
             }}
           >
-            {Array.from({ length: containerInfo.totalContainers }, (_, i) => {
-              // Calculate pipes for each container
-              let containerPipes = 0;
-              for (const pipeResult of results.pipeResults) {
-                const perContainer = pipeResult.pipesPerContainer;
-                const startIdx = i * perContainer;
-                const endIdx = Math.min(startIdx + perContainer, pipeResult.numberOfPipes);
-                containerPipes += Math.max(0, endIdx - startIdx);
-              }
-              return (
-                <Tab
-                  key={i}
-                  label={`Container ${i + 1} (${containerPipes})`}
-                />
-              );
-            })}
+            {Array.from({ length: containerInfo.totalContainers }, (_, i) => (
+              <Tab
+                key={i}
+                label={`Container ${i + 1} (${getPipesForContainer(i)})`}
+              />
+            ))}
           </Tabs>
         </Box>
       )}

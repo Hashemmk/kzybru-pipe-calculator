@@ -13,11 +13,12 @@ import {
   CircularProgress
 } from '@mui/material';
 import { useCalculator } from '../../context/CalculatorContext';
-import { formatNumber, formatNumberWithCommas, getRecommendations } from '../../utils/calculations';
+import { formatNumber, formatNumberWithCommas } from '../../utils/calculations';
 import PipeResultsTable from './PipeResultsTable';
+import ContainerTable from './ContainerTable';
 
 export default function ResultsDisplay() {
-  const { results, isCalculating } = useCalculator();
+  const { results, isCalculating, volume } = useCalculator();
 
   if (isCalculating) {
     return (
@@ -56,7 +57,6 @@ export default function ResultsDisplay() {
     );
   }
 
-  const recommendations = getRecommendations(results);
   const { volumesNeeded } = results;
 
   return (
@@ -180,56 +180,15 @@ export default function ResultsDisplay() {
         </Grid>
       </Grid>
 
-      {/* Alert if multiple volumes needed */}
-      {volumesNeeded?.total > 1 && (
-        <Alert severity="warning" sx={{ mb: 2 }}>
-          <Typography variant="body2">
-            <strong>{volumesNeeded.total} {results.transportationType || 'containers'}</strong> are required to transport all pipes.
-          </Typography>
-          <Typography variant="caption" display="block" sx={{ mt: 1 }}>
-            Weight ratio: {formatNumber(volumesNeeded.weightRatio * 100)}%
-          </Typography>
-          {volumesNeeded.packingDetails && volumesNeeded.packingDetails.length > 0 && (
-            <Box sx={{ mt: 1 }}>
-              {volumesNeeded.packingDetails.map((detail, idx) => (
-                <Typography key={idx} variant="caption" display="block">
-                  {detail.error ? (
-                    <span style={{ color: 'red' }}>
-                      Ø{detail.diameterMm}mm: {detail.error}
-                    </span>
-                  ) : (
-                    <span>
-                      Ø{detail.diameterMm}mm: ({detail.pipesPerRow}×{detail.pipesPerColumn})×{detail.pipesAlongLength}={detail.pipesPerContainer} pipes/container,
-                      {' '}{detail.pipesNeeded} needed → {detail.containersNeeded} container(s)
-                    </span>
-                  )}
-                </Typography>
-              ))}
-            </Box>
-          )}
-        </Alert>
-      )}
-
       {/* Pipe Results Table */}
       <PipeResultsTable pipeResults={results.pipeResults} />
 
-      {/* Recommendations */}
-      {recommendations.length > 0 && (
-        <Box sx={{ mt: 2 }}>
-          <Typography variant="h6" gutterBottom>
-            Summary
-          </Typography>
-          {recommendations.map((rec, index) => (
-            <Alert
-              key={index}
-              severity={rec.type}
-              sx={{ mb: 1 }}
-            >
-              {rec.message}
-            </Alert>
-          ))}
-        </Box>
-      )}
+      {/* Container Details Table */}
+      <ContainerTable
+        pipeResults={results.pipeResults}
+        volumesNeeded={volumesNeeded}
+        volume={volume}
+      />
     </Box>
   );
 }
