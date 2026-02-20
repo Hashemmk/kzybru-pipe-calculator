@@ -26,7 +26,7 @@ const MIN_SCALE = 0.5;
 const MAX_SCALE = 5;
 
 export default function PipeVisualization() {
-  const { results, volume } = useCalculator();
+  const { results, volume, config } = useCalculator();
   const canvasRef = useRef(null);
   const containerRef = useRef(null);
   const [containerSize, setContainerSize] = useState({ width: 400, height: 350 });
@@ -169,6 +169,9 @@ export default function PipeVisualization() {
       return null;
     }
 
+    // Get minimum space between pipes (in cm)
+    const minSpace = config?.minSpace || 0;
+
     // Sort pipes by external diameter (largest first)
     const sortedPipes = [...results.pipeResults]
       .filter(p => p.numberOfPipes > 0)
@@ -194,6 +197,8 @@ export default function PipeVisualization() {
     const largestPipe = sortedPipes[0];
     const outerDiameter = largestPipe.externalDiameter;
     const outerRadius = outerDiameter / 2;
+    // Effective diameter includes spacing
+    const effectiveLargeDiameter = outerDiameter + minSpace;
     const largePipesPerRow = largestPipe.pipesPerRow;
     const largePipesPerColumn = largestPipe.pipesPerColumn;
     const largePipesPerCrossSection = largePipesPerRow * largePipesPerColumn;
@@ -241,8 +246,9 @@ export default function PipeVisualization() {
       const col = i % largePipesPerRow;
       const row = Math.floor(i / largePipesPerRow);
 
-      const x = outerRadius + col * outerDiameter;
-      const y = outerRadius + row * outerDiameter;
+      // Position pipes with spacing between them
+      const x = outerRadius + col * effectiveLargeDiameter;
+      const y = outerRadius + row * effectiveLargeDiameter;
 
       // Create outer pipe item
       const outerItem = {
@@ -287,11 +293,12 @@ export default function PipeVisualization() {
     // Space 1: Side space (remaining width beside large pipes)
     // Space 2: Top space (remaining height above large pipes)
     const visualizedLargeRows = Math.ceil(pipesToVisualize / largePipesPerRow);
-    const usedHeightByLarge = visualizedLargeRows * outerDiameter;
-    const usedWidthByLarge = Math.min(pipesToVisualize, largePipesPerRow) * outerDiameter;
+    // Account for spacing when calculating used space
+    const usedHeightByLarge = visualizedLargeRows * effectiveLargeDiameter - minSpace;
+    const usedWidthByLarge = Math.min(pipesToVisualize, largePipesPerRow) * effectiveLargeDiameter - minSpace;
 
-    const remainingWidthOnSide = volume.width - usedWidthByLarge;
-    const remainingHeightOnTop = volume.height - usedHeightByLarge;
+    const remainingWidthOnSide = volume.width - usedWidthByLarge - minSpace;
+    const remainingHeightOnTop = volume.height - usedHeightByLarge - minSpace;
 
     // Calculate how many small pipes were nested/standalone in previous containers
     // Track remaining small pipes for this container
@@ -336,18 +343,20 @@ export default function PipeVisualization() {
     for (const smallPipe of sortedPipes.slice(1)) {
       const smallDiameter = smallPipe.externalDiameter;
       const smallRadius = smallDiameter / 2;
+      // Effective diameter for small pipes includes spacing
+      const effectiveSmallDiameter = smallDiameter + minSpace;
 
       const standalonePipesAvailable = smallPipeRemaining[smallPipe.id] || 0;
       if (standalonePipesAvailable <= 0) continue;
 
       // Calculate capacity in side space (columns beside large pipes, full height)
-      const sideColumns = Math.floor(remainingWidthOnSide / smallDiameter);
-      const sideRows = Math.floor(volume.height / smallDiameter);
+      const sideColumns = Math.floor((remainingWidthOnSide + minSpace) / effectiveSmallDiameter);
+      const sideRows = Math.floor((volume.height + minSpace) / effectiveSmallDiameter);
       const sideCapacity = sideColumns * sideRows;
 
       // Calculate capacity in top space (above large pipes, only in the width used by large)
-      const topColumns = Math.floor(usedWidthByLarge / smallDiameter);
-      const topRows = Math.floor(remainingHeightOnTop / smallDiameter);
+      const topColumns = Math.floor((usedWidthByLarge + minSpace) / effectiveSmallDiameter);
+      const topRows = Math.floor((remainingHeightOnTop + minSpace) / effectiveSmallDiameter);
       const topCapacity = topColumns * topRows;
 
       // Total standalone capacity for cross-section view
@@ -364,8 +373,9 @@ export default function PipeVisualization() {
       if (sideColumns > 0 && sideRows > 0) {
         for (let row = 0; row < sideRows && placed < standalonePipesInThis; row++) {
           for (let col = 0; col < sideColumns && placed < standalonePipesInThis; col++) {
-            const x = usedWidthByLarge + smallRadius + col * smallDiameter;
-            const y = smallRadius + row * smallDiameter;
+            // Add spacing from large pipes area and between small pipes
+            const x = usedWidthByLarge + minSpace + smallRadius + col * effectiveSmallDiameter;
+            const y = smallRadius + row * effectiveSmallDiameter;
 
             if (x + smallRadius > volume.width || y + smallRadius > volume.height) continue;
 
@@ -390,13 +400,14 @@ export default function PipeVisualization() {
       if (topColumns > 0 && topRows > 0 && placed < standalonePipesInThis) {
         for (let row = 0; row < topRows && placed < standalonePipesInThis; row++) {
           for (let col = 0; col < topColumns && placed < standalonePipesInThis; col++) {
-            const x = smallRadius + col * smallDiameter;
-            const y = usedHeightByLarge + smallRadius + row * smallDiameter;
+            // Add spacing from large pipes area and between small pipes
+            const x = smallRadius + col * effectiveSmallDiameter;
+            const y = usedHeightByLarge + minSpace + smallRadius + row * effectiveSmallDiameter;
 
             if (x + smallRadius > volume.width || y + smallRadius > volume.height) continue;
 
             // Skip if this position overlaps with the side space we already filled
-            if (x >= usedWidthByLarge) continue;
+            if (x >= usedWidthByLarge + minSpace) continue;
 
             items.push({
               x: x,
@@ -422,9 +433,10 @@ export default function PipeVisualization() {
       items,
       pipeCounts: Object.fromEntries(
         Object.entries(pipeCounts).map(([id, data]) => [id, { count: data.count }])
-      )
+      ),
+      minSpace // Include minSpace so we can display it in the legend
     };
-  }, [results, activeContainer, volume]);
+  }, [results, activeContainer, volume, config]);
 
   // Calculate auto-fit scale
   const scale = useMemo(() => {
@@ -782,10 +794,19 @@ export default function PipeVisualization() {
       </Box>
 
       {/* Volume info */}
-      <Box display="flex" justifyContent="space-between" alignItems="center" mt={2}>
+      <Box display="flex" justifyContent="space-between" alignItems="center" mt={2} flexWrap="wrap" gap={1}>
         <Typography variant="body2" color="text.secondary">
           Grid: 10cm
         </Typography>
+        {arrangement?.minSpace > 0 && (
+          <Chip
+            label={`Spacing: ${arrangement.minSpace} cm`}
+            size="small"
+            color="secondary"
+            variant="outlined"
+            sx={{ fontWeight: 500 }}
+          />
+        )}
         <Typography variant="body2" color="text.secondary">
           Volume: {volume.width}cm (W) × {volume.height}cm (H) × {volume.length}cm (L)
         </Typography>

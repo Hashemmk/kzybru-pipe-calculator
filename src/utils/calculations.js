@@ -17,11 +17,14 @@ import { TRANSPORTATION_TYPES } from '../constants/defaults.js';
  * @param {Array} pipes - Array of pipe specifications
  * @param {Array} _boxes - Not used
  * @param {Object} volume - Volume dimensions
+ * @param {Object} config - Configuration (minSpace, allowance)
  * @returns {Object} - Calculation results
  */
-export function calculateResults(_arrangement, pipes, _boxes, volume) {
+export function calculateResults(_arrangement, pipes, _boxes, volume, config = {}) {
+  const minSpace = config.minSpace || 0; // Minimum space between pipes in cm
+
   // Calculate per-pipe results with container dimensions for packing calculation
-  const pipeResults = pipes.map(pipe => calculatePipeResult(pipe, volume));
+  const pipeResults = pipes.map(pipe => calculatePipeResult(pipe, volume, minSpace));
 
   // Calculate totals
   const totalVolume = pipeResults.reduce((sum, p) => sum + p.volumeM3, 0);
@@ -60,9 +63,10 @@ export function calculateResults(_arrangement, pipes, _boxes, volume) {
  * Calculate results for a single pipe type
  * @param {Object} pipe - Pipe specification (dimensions in mm)
  * @param {Object} volume - Container dimensions (in cm)
+ * @param {number} minSpace - Minimum space between pipes (in cm)
  * @returns {Object} - Pipe calculation results
  */
-function calculatePipeResult(pipe, volume) {
+function calculatePipeResult(pipe, volume, minSpace = 0) {
   // Pipe dimensions are in mm
   const externalDiameterMm = pipe.externalDiameter || 0;
   const wallThicknessMm = pipe.wallThickness || 0;
@@ -109,8 +113,14 @@ function calculatePipeResult(pipe, volume) {
   let pipeFitsInLength = false;
 
   if (externalDiameterCm > 0 && standardLengthCm > 0) {
-    pipesPerRow = Math.floor(containerWidth / externalDiameterCm);
-    pipesPerColumn = Math.floor(containerHeight / externalDiameterCm);
+    // Account for minimum space between pipes
+    // Each pipe effectively takes up: diameter + minSpace
+    const effectiveDiameter = externalDiameterCm + minSpace;
+
+    // Calculate how many pipes fit with spacing
+    // First pipe doesn't need leading space, so we add minSpace back once
+    pipesPerRow = Math.floor((containerWidth + minSpace) / effectiveDiameter);
+    pipesPerColumn = Math.floor((containerHeight + minSpace) / effectiveDiameter);
     pipesPerCrossSection = pipesPerRow * pipesPerColumn;
     pipeFitsInLength = standardLengthCm <= containerLength;
 

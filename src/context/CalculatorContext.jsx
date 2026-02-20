@@ -261,7 +261,8 @@ export function CalculatorProvider({ children }) {
         arrangement,
         state.pipes,
         state.boxes,
-        state.volume
+        state.volume,
+        state.config
       );
 
       dispatch({
